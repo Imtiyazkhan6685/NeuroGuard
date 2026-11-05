@@ -1,33 +1,34 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Sliders, Bell, Eye, Lock, RotateCcw, Smartphone, Shield, Info } from 'lucide-react';
+import { requestAndroidOverlayPermission, requestAndroidAccessibility, toggleAndroidFloatingHud } from '../lib/nativeBridge';
+import { Sliders, Eye, Lock, RotateCcw, Smartphone, ShieldCheck, CheckCircle2, ChevronRight } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
-  const { settings, updateSettings, resetToday, events } = useApp();
+  const { settings, updateSettings, resetToday, events, nativeStats } = useApp();
 
   return (
-    <div className="space-y-6 pb-28">
+    <div className="space-y-6 pb-28 text-white select-none">
       {/* Title */}
       <div>
-        <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Preferences</span>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Limits & Enforcement</h1>
+        <span className="text-[11px] font-bold text-zinc-500 tracking-widest uppercase">Configuration</span>
+        <h1 className="text-3xl font-black text-white tracking-tight mt-0.5">Settings</h1>
         <p className="text-xs text-zinc-400 mt-1">
-          Customize your daily thresholds, floating overlay behavior, and accountability triggers.
+          Adjust daily reel thresholds, floating corner widget, and hardware detection.
         </p>
       </div>
 
       {/* Daily Limits Section */}
-      <div className="ios-glass rounded-3xl p-5 border border-white/10 space-y-4">
-        <div className="flex items-center space-x-2 text-purple-400">
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 space-y-5 shadow-2xl">
+        <div className="flex items-center space-x-2 text-[#FA114F]">
           <Sliders className="w-5 h-5" />
-          <span className="text-xs font-semibold uppercase tracking-wider">Daily Quotas</span>
+          <span className="text-xs font-bold uppercase tracking-wider">Daily Quota Targets</span>
         </div>
 
         {/* Reel Count Limit Slider */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-white">Daily Reel & Short Limit</span>
-            <span className="text-base font-extrabold text-purple-400 font-mono">
+            <span className="font-semibold text-zinc-300">Daily Reels & Shorts Target</span>
+            <span className="text-lg font-black text-[#FA114F] font-mono">
               {settings.dailyReelLimit} Reels
             </span>
           </div>
@@ -38,20 +39,20 @@ export const SettingsView: React.FC = () => {
             step="5"
             value={settings.dailyReelLimit}
             onChange={(e) => updateSettings({ dailyReelLimit: parseInt(e.target.value) })}
-            className="w-full accent-purple-500 h-2 bg-zinc-800 rounded-lg cursor-pointer"
+            className="w-full accent-[#FA114F] h-2 bg-zinc-800 rounded-lg cursor-pointer"
           />
-          <div className="flex justify-between text-[10px] text-zinc-500">
+          <div className="flex justify-between text-[10px] text-zinc-500 font-medium">
             <span>5 Strict</span>
-            <span>20 Balanced</span>
+            <span>20 Standard</span>
             <span>60 Relaxed</span>
           </div>
         </div>
 
-        {/* Max Minutes */}
-        <div className="pt-3 border-t border-white/10 space-y-2">
+        {/* Max Minutes Slider */}
+        <div className="pt-3 border-t border-white/[0.06] space-y-3">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-white">Max Active Doomscroll Time</span>
-            <span className="text-base font-extrabold text-blue-400 font-mono">
+            <span className="font-semibold text-zinc-300">Max Active Doomscroll Time</span>
+            <span className="text-lg font-black text-[#00F0FF] font-mono">
               {settings.maxDailyMinutes} mins
             </span>
           </div>
@@ -62,74 +63,88 @@ export const SettingsView: React.FC = () => {
             step="5"
             value={settings.maxDailyMinutes}
             onChange={(e) => updateSettings({ maxDailyMinutes: parseInt(e.target.value) })}
-            className="w-full accent-blue-500 h-2 bg-zinc-800 rounded-lg cursor-pointer"
+            className="w-full accent-[#00F0FF] h-2 bg-zinc-800 rounded-lg cursor-pointer"
           />
         </div>
       </div>
 
-      {/* Floating HUD & Hardware Toggles */}
-      <div className="ios-glass-card rounded-3xl p-5 border border-white/10 space-y-3.5">
-        <h2 className="text-sm font-bold text-white">Floating HUD & Behavior</h2>
+      {/* Floating HUD Widget Settings */}
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 space-y-4 shadow-2xl">
+        <div className="flex items-center space-x-2 text-[#30D158]">
+          <Eye className="w-5 h-5" />
+          <span className="text-xs font-bold uppercase tracking-wider">Floating Corner Pill</span>
+        </div>
 
-        {/* Overlay toggle */}
         <div className="flex items-center justify-between">
-          <div className="flex items-start space-x-3">
-            <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400 mt-0.5">
-              <Eye className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-white">Floating Hover HUD</span>
-              <p className="text-[10px] text-zinc-400">Pill overlay automatically mounts over Instagram & YouTube</p>
-            </div>
+          <div className="space-y-0.5 max-w-[75%]">
+            <span className="text-sm font-bold text-white">Enable Corner Floating Pill</span>
+            <p className="text-xs text-zinc-400">
+              Draggable widget that counts Instagram and YouTube swipes even when this app is closed.
+            </p>
           </div>
-          <input
-            type="checkbox"
-            checked={settings.enableFloatingHud}
-            onChange={(e) => updateSettings({ enableFloatingHud: e.target.checked })}
-            className="w-5 h-5 rounded accent-purple-500"
-          />
-        </div>
-
-        {/* Lockout Mode */}
-        <div className="flex items-center justify-between pt-2 border-t border-white/5">
-          <div className="flex items-start space-x-3">
-            <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 mt-0.5">
-              <Lock className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-white">Hard App Lockout</span>
-              <p className="text-[10px] text-zinc-400">Forces Instagram/YouTube to close when quota is exceeded</p>
-            </div>
-          </div>
-          <input
-            type="checkbox"
-            checked={settings.hardLockoutAfterLimit}
-            onChange={(e) => updateSettings({ hardLockoutAfterLimit: e.target.checked })}
-            className="w-5 h-5 rounded accent-rose-500"
-          />
+          <button
+            onClick={() => {
+              const next = !settings.enableFloatingHud;
+              updateSettings({ enableFloatingHud: next });
+              toggleAndroidFloatingHud(next);
+            }}
+            className={`w-12 h-7 rounded-full p-1 transition-colors duration-300 flex items-center ${
+              settings.enableFloatingHud ? 'bg-[#30D158] justify-end' : 'bg-zinc-800 justify-start'
+            }`}
+          >
+            <div className="w-5 h-5 rounded-full bg-white shadow-md transform transition-transform" />
+          </button>
         </div>
       </div>
 
-      {/* Platform Architecture Note */}
-      <div className="ios-glass-card rounded-3xl p-5 border border-white/10 space-y-2">
-        <div className="flex items-center space-x-2 text-zinc-300">
-          <Smartphone className="w-4 h-4 text-purple-400" />
-          <h2 className="text-xs font-bold uppercase tracking-wider">Platform Capabilities</h2>
+      {/* System Hardware Permissions */}
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 space-y-3 shadow-2xl">
+        <div className="flex items-center space-x-2 text-[#A8FF00]">
+          <ShieldCheck className="w-5 h-5" />
+          <span className="text-xs font-bold uppercase tracking-wider">System Permissions</span>
         </div>
-        <p className="text-[11px] text-zinc-400 leading-relaxed">
-          • <span className="font-semibold text-zinc-200">Android:</span> Fully runs the floating hover HUD via <code className="text-purple-300">SYSTEM_ALERT_WINDOW</code> and tracks reel swipes via <code className="text-purple-300">AccessibilityService</code>.<br/>
-          • <span className="font-semibold text-zinc-200">iOS:</span> Apple's sandbox restricts floating overlays on top of other apps; Screen Time API shields aggregate usage.
-        </p>
+
+        <div className="space-y-2 pt-1 text-xs">
+          <button
+            onClick={() => requestAndroidOverlayPermission()}
+            className="w-full p-3.5 rounded-2xl bg-zinc-900 border border-white/[0.06] flex items-center justify-between text-left hover:border-white/20 transition-all"
+          >
+            <div>
+              <div className="font-semibold text-white">1. Display Over Other Apps</div>
+              <div className="text-[11px] text-zinc-400 mt-0.5">Allows corner pill to float over Instagram & YouTube</div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-zinc-500" />
+          </button>
+
+          <button
+            onClick={() => requestAndroidAccessibility()}
+            className="w-full p-3.5 rounded-2xl bg-zinc-900 border border-white/[0.06] flex items-center justify-between text-left hover:border-white/20 transition-all"
+          >
+            <div>
+              <div className="font-semibold text-white">2. Reel Accessibility Tracking</div>
+              <div className="text-[11px] text-zinc-400 mt-0.5">Counts real Instagram & YouTube swipes automatically</div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-zinc-500" />
+          </button>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/[0.04] text-[11px] text-zinc-400 leading-relaxed">
+          <span className="text-amber-400 font-bold">Android 13/14/15 Notice:</span> If the accessibility toggle shows <span className="italic text-zinc-300">"Restricted setting"</span>, long-press NeuroGuard on your home screen ➔ tap <span className="text-white font-semibold">App info</span> ➔ tap <span className="text-white font-semibold">⋮ (3 dots)</span> at top right ➔ tap <span className="text-emerald-400 font-bold">Allow restricted settings</span>.
+        </div>
       </div>
 
       {/* Reset Session Data */}
-      <div className="pt-2">
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 flex items-center justify-between shadow-2xl">
+        <div className="space-y-0.5">
+          <span className="text-sm font-bold text-white">Reset Today's Reel Counters</span>
+          <p className="text-xs text-zinc-400">Clear today's {events.length} recorded reel views.</p>
+        </div>
         <button
           onClick={resetToday}
-          className="w-full py-3 px-4 rounded-2xl bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white font-medium text-xs flex items-center justify-center space-x-2 active:scale-95 transition-all"
+          className="flex items-center space-x-1.5 px-4 py-2 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-300 border border-white/10 active:scale-95 transition-all"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>Reset Today's Reel Counter ({events.length} reels recorded)</span>
+          <span>Reset</span>
         </button>
       </div>
     </div>

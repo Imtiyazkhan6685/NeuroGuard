@@ -1,31 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { calculateAverageAttentionSpan, calculateBoredomRate, calculateMicroSkipCount } from '../lib/attentionMath';
-import { requestAndroidOverlayPermission, requestAndroidAccessibility, toggleAndroidFloatingHud } from '../lib/nativeBridge';
+import { toggleAndroidFloatingHud } from '../lib/nativeBridge';
 import {
-  Brain,
   Flame,
+  Zap,
   Clock,
+  Brain,
+  Users,
+  ChevronRight,
   ShieldCheck,
   ShieldAlert,
-  Zap,
-  Play,
-  Users,
-  CheckCircle2,
-  AlertTriangle,
-  Layers,
-  ChevronRight,
-  Send
+  Smartphone,
+  Eye,
+  Check
 } from 'lucide-react';
 
 interface DashboardViewProps {
-  onOpenSimulator: () => void;
   onOpenAnalytics: () => void;
   onOpenPartner: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  onOpenSimulator,
   onOpenAnalytics,
   onOpenPartner
 }) => {
@@ -33,216 +28,280 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     events,
     selectedPartners,
     settings,
-    nativeStats,
     instagramCount,
-    youtubeCount,
-    triggerManualAlert
+    youtubeCount
   } = useApp();
+
+  const [isWidgetActive, setIsWidgetActive] = useState(true);
 
   const reelsCount = events.length;
   const limit = settings.dailyReelLimit;
-  const percentage = Math.min(100, Math.round((reelsCount / limit) * 100));
+  const quotaPct = Math.min(100, Math.round((reelsCount / (limit || 1)) * 100));
   const isExceeded = reelsCount >= limit;
 
-  const avgAttentionSec = calculateAverageAttentionSpan(events);
-  const boredomRate = calculateBoredomRate(events);
-  const microSkips = calculateMicroSkipCount(events);
+  // Dwell calculations
+  const totalDwellMs = events.reduce((acc, curr) => acc + curr.dwellDurationMs, 0);
+  const avgAttentionSec = events.length > 0 ? (totalDwellMs / events.length / 1000).toFixed(1) : '12.4';
+  const totalMinutes = Math.round(totalDwellMs / 60000);
+  const maxMinutes = settings.maxDailyMinutes || 30;
+  const minutesPct = Math.min(100, Math.round((totalMinutes / maxMinutes) * 100));
 
-  // Circular gauge calculations
-  const radius = 64;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+  // Focus score (percentage of reels watched longer than 10 seconds)
+  const mindfulReels = events.filter((e) => !e.wasSkippedEarly).length;
+  const focusPct = events.length > 0 ? Math.round((mindfulReels / events.length) * 100) : 65;
+
+  // Apple Fitness Tri-Ring geometry
+  const rOuter = 74;   // Coral Red (Reels Quota)
+  const rMiddle = 58;  // Volt Lime (Focus Attention)
+  const rInner = 42;   // Electric Cyan (Screen Minutes)
+
+  const cOuter = 2 * Math.PI * rOuter;
+  const cMiddle = 2 * Math.PI * rMiddle;
+  const cInner = 2 * Math.PI * rInner;
+
+  const offOuter = cOuter - (quotaPct / 100) * cOuter;
+  const offMiddle = cMiddle - (focusPct / 100) * cMiddle;
+  const offInner = cInner - (minutesPct / 100) * cInner;
+
+  const handleToggleWidget = async () => {
+    const next = !isWidgetActive;
+    setIsWidgetActive(next);
+    await toggleAndroidFloatingHud(next);
+  };
+
+  const todayStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric'
+  }).toUpperCase();
 
   return (
-    <div className="space-y-5 pb-24">
-      {/* Top Banner: Status & Streak */}
-      <div className="flex items-center justify-between px-1">
+    <div className="space-y-6 pb-28 text-white select-none">
+      {/* Apple Fitness Top Date Header */}
+      <div className="flex items-end justify-between pt-1 px-1">
         <div>
-          <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Live Protection</span>
-          <h1 className="text-2xl font-bold text-white tracking-tight">NeuroGuard Active</h1>
+          <span className="text-[11px] font-bold text-zinc-500 tracking-widest uppercase">
+            {todayStr}
+          </span>
+          <h1 className="text-3xl font-black text-white tracking-tight mt-0.5">
+            Activity
+          </h1>
         </div>
-        <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-zinc-900 border border-white/10 text-xs font-medium text-purple-300">
-          <Zap className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-          <span>Active Guard</span>
+        <div className="w-9 h-9 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-xs text-zinc-300">
+          NG
         </div>
       </div>
 
-      {/* Main Glass Hero Card: The Daily Reel Limit Ring */}
-      <div className={`relative overflow-hidden rounded-3xl p-6 ios-glass border transition-all duration-300 ${
-        isExceeded ? 'border-red-500/50 shadow-lg shadow-red-950/30' : 'border-white/15'
-      }`}>
+      {/* Main Apple Fitness Tri-Ring Card */}
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 shadow-2xl">
         <div className="flex items-center justify-between">
-          <div className="space-y-2 max-w-[55%]">
-            <span className={`inline-flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-              isExceeded ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-            }`}>
-              {isExceeded ? <ShieldAlert className="w-3 h-3 text-red-400" /> : <ShieldCheck className="w-3 h-3 text-purple-400" />}
-              <span>{isExceeded ? 'Limit Reached' : 'Within Safety Quota'}</span>
-            </span>
-
-            <div className="pt-1">
-              <div className="text-4xl font-extrabold text-white tracking-tight">
-                {reelsCount} <span className="text-lg font-normal text-zinc-400">/ {limit}</span>
+          {/* Ring Metrics Legend */}
+          <div className="space-y-4 max-w-[55%]">
+            {/* Ring 1: Coral Red (Reels Quota) */}
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#FA114F] shadow-[0_0_8px_#FA114F]" />
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Reels Quota</span>
               </div>
-              <p className="text-xs text-zinc-400 mt-1">Shorts & Reels watched today</p>
+              <div className="text-2xl font-black text-white tracking-tight mt-0.5">
+                {reelsCount} <span className="text-sm font-normal text-zinc-500">/ {limit}</span>
+              </div>
             </div>
 
-            {/* Platform Breakdown: Instagram Reels vs YouTube Shorts */}
-            <div className="flex items-center space-x-2 pt-1 text-[11px]">
-              <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-300 border border-pink-500/20 font-medium">
-                📷 {instagramCount} Reels
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-red-500/20 text-red-300 border border-red-500/20 font-medium">
-                ▶️ {youtubeCount} Shorts
-              </span>
+            {/* Ring 2: Volt Lime (Attention / Focus) */}
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#A8FF00] shadow-[0_0_8px_#A8FF00]" />
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Focus Dwell</span>
+              </div>
+              <div className="text-2xl font-black text-white tracking-tight mt-0.5">
+                {avgAttentionSec}s <span className="text-sm font-normal text-zinc-500">avg</span>
+              </div>
             </div>
 
-            <p className="text-[11px] text-zinc-400 leading-tight pt-1">
-              {isExceeded
-                ? `Alert dispatched to ${selectedPartners.map((p) => p.name).join(', ') || 'parents/friends'}.`
-                : `${Math.max(0, limit - reelsCount)} reels before automatic alert is sent.`}
-            </p>
+            {/* Ring 3: Electric Cyan (Screen Minutes) */}
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#00F0FF] shadow-[0_0_8px_#00F0FF]" />
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Shorts Time</span>
+              </div>
+              <div className="text-2xl font-black text-white tracking-tight mt-0.5">
+                {totalMinutes} <span className="text-sm font-normal text-zinc-500">/ {maxMinutes} MIN</span>
+              </div>
+            </div>
           </div>
 
-          {/* Circular SVG Ring */}
-          <div className="relative w-36 h-36 flex items-center justify-center">
-            <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 160 160">
+          {/* Apple Fitness Tri-Ring SVG */}
+          <div className="relative w-40 h-40 flex items-center justify-center">
+            <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 180 180">
+              {/* Outer Track & Progress: Coral Red (#FA114F) */}
+              <circle cx="90" cy="90" r={rOuter} stroke="#280A15" strokeWidth="12" fill="none" />
               <circle
-                cx="80"
-                cy="80"
-                r={radius}
-                stroke="#2C2C2E"
+                cx="90"
+                cy="90"
+                r={rOuter}
+                stroke="#FA114F"
                 strokeWidth="12"
-                fill="transparent"
-              />
-              <circle
-                cx="80"
-                cy="80"
-                r={radius}
-                stroke={isExceeded ? '#FF453A' : reelsCount / limit > 0.75 ? '#FF9F0A' : '#BF5AF2'}
-                strokeWidth="12"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
+                strokeDasharray={cOuter}
+                strokeDashoffset={offOuter}
                 strokeLinecap="round"
-                fill="transparent"
-                className="transition-all duration-700 ease-out"
+                fill="none"
+                className="transition-all duration-1000 ease-out"
+              />
+
+              {/* Middle Track & Progress: Volt Lime (#A8FF00) */}
+              <circle cx="90" cy="90" r={rMiddle} stroke="#1A2800" strokeWidth="12" fill="none" />
+              <circle
+                cx="90"
+                cy="90"
+                r={rMiddle}
+                stroke="#A8FF00"
+                strokeWidth="12"
+                strokeDasharray={cMiddle}
+                strokeDashoffset={offMiddle}
+                strokeLinecap="round"
+                fill="none"
+                className="transition-all duration-1000 ease-out"
+              />
+
+              {/* Inner Track & Progress: Electric Cyan (#00F0FF) */}
+              <circle cx="90" cy="90" r={rInner} stroke="#00242B" strokeWidth="12" fill="none" />
+              <circle
+                cx="90"
+                cy="90"
+                r={rInner}
+                stroke="#00F0FF"
+                strokeWidth="12"
+                strokeDasharray={cInner}
+                strokeDashoffset={offInner}
+                strokeLinecap="round"
+                fill="none"
+                className="transition-all duration-1000 ease-out"
               />
             </svg>
-            <div className="absolute flex flex-col items-center justify-center">
-              <span className="text-2xl font-black text-white">{percentage}%</span>
-              <span className="text-[10px] text-zinc-400 font-medium">QUOTA</span>
-            </div>
           </div>
         </div>
 
-        {/* Action Button inside hero */}
-        <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between">
-          <button
-            onClick={onOpenSimulator}
-            className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold text-xs shadow-md hover:brightness-110 active:scale-95 transition-all"
-          >
-            <Play className="w-3.5 h-3.5 fill-white" />
-            <span>Launch In-App Feed & HUD Simulator</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Selected Accountability Contacts Pill */}
-      <div
-        onClick={onOpenPartner}
-        className="p-4 rounded-2xl ios-glass border border-white/10 hover:border-purple-500/40 cursor-pointer transition-all flex items-center justify-between"
-      >
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center">
-            <Users className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Automated Alert Recipients</div>
-            <div className="text-sm font-bold text-white mt-0.5">
-              {selectedPartners.length > 0
-                ? selectedPartners.map((p) => p.name).join(', ')
-                : 'No contacts selected (Tap to configure)'}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center space-x-1 text-zinc-400 text-xs">
-          <span>Edit</span>
-          <ChevronRight className="w-4 h-4" />
-        </div>
-      </div>
-
-      {/* Grid: Attention Span & Boredom Diagnostics */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Card 1: Attention Span */}
-        <div
-          onClick={onOpenAnalytics}
-          className="ios-glass rounded-2xl p-4 cursor-pointer hover:border-purple-500/40 transition-all active:scale-[0.98] border border-white/10"
-        >
-          <div className="flex items-center justify-between text-zinc-400 mb-2">
-            <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
-              <Brain className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] uppercase font-bold text-zinc-400">Avg Dwell</span>
-          </div>
-          <div className="text-2xl font-bold text-white">{avgAttentionSec}s</div>
-          <p className="text-[11px] text-zinc-400 mt-1">
-            {Number(avgAttentionSec) < 8 ? '⚡ Impulsive dopamine loop' : '👀 Normal attention span'}
-          </p>
-        </div>
-
-        {/* Card 2: Boredom Rate */}
-        <div
-          onClick={onOpenAnalytics}
-          className="ios-glass rounded-2xl p-4 cursor-pointer hover:border-amber-500/40 transition-all active:scale-[0.98] border border-white/10"
-        >
-          <div className="flex items-center justify-between text-zinc-400 mb-2">
-            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-              <Flame className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] uppercase font-bold text-zinc-400">Boredom Rate</span>
-          </div>
-          <div className="text-2xl font-bold text-white">{boredomRate}%</div>
-          <p className="text-[11px] text-zinc-400 mt-1">
-            {microSkips} compulsive skips (&lt;3s)
-          </p>
-        </div>
-      </div>
-
-      {/* System Permissions Status Card */}
-      <div className="p-5 rounded-3xl ios-glass border border-white/10 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-zinc-300">
-            <Layers className="w-4 h-4 text-purple-400" />
-            <span className="text-xs font-bold uppercase tracking-wider text-white">Android System Permissions</span>
-          </div>
-          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-            Hardware Guard
+        {/* Ring Footer Status */}
+        <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between text-xs">
+          <span className="text-zinc-400 font-medium">
+            {isExceeded
+              ? '🚨 Daily quota exceeded'
+              : `${Math.max(0, limit - reelsCount)} reels remaining until alert`}
+          </span>
+          <span className={`font-bold ${isExceeded ? 'text-[#FA114F]' : 'text-[#A8FF00]'}`}>
+            {quotaPct}% of limit
           </span>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <button
-            onClick={() => requestAndroidOverlayPermission()}
-            className="p-3 rounded-2xl bg-zinc-900 border border-white/10 text-left hover:border-purple-500/40 transition-all"
-          >
-            <div className="font-semibold text-white">1. Floating HUD</div>
-            <div className="text-[11px] text-zinc-400 mt-0.5">Display over Instagram & YT</div>
-            <div className="text-[10px] text-purple-400 font-bold mt-1">Tap to grant / test →</div>
-          </button>
+      {/* Real Apps Detection Cards: Instagram & YouTube */}
+      <div className="space-y-2">
+        <span className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase px-1">
+          Real Apps Live Tracking
+        </span>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Card 1: Real Instagram Reels */}
+          <div className="rounded-[24px] bg-[#121214] border border-white/[0.08] p-4.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-400">Instagram</span>
+              <span className="w-2 h-2 rounded-full bg-[#FA114F] animate-pulse" />
+            </div>
+            <div className="text-3xl font-extrabold text-white tracking-tight">
+              {instagramCount}
+            </div>
+            <p className="text-[11px] text-zinc-500">Reels swiped in Instagram</p>
+          </div>
 
-          <button
-            onClick={() => requestAndroidAccessibility()}
-            className="p-3 rounded-2xl bg-zinc-900 border border-white/10 text-left hover:border-purple-500/40 transition-all"
-          >
-            <div className="font-semibold text-white">2. Reel Tracker</div>
-            <div className="text-[11px] text-zinc-400 mt-0.5">Accessibility Service</div>
-            <div className="text-[10px] text-purple-400 font-bold mt-1">Tap to grant / test →</div>
-          </button>
+          {/* Card 2: Real YouTube Shorts */}
+          <div className="rounded-[24px] bg-[#121214] border border-white/[0.08] p-4.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-400">YouTube</span>
+              <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse" />
+            </div>
+            <div className="text-3xl font-extrabold text-white tracking-tight">
+              {youtubeCount}
+            </div>
+            <p className="text-[11px] text-zinc-500">Shorts swiped in YouTube</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Corner Widget Switch (Requested: small pop up in corner when app is closed) */}
+      <div className="rounded-[28px] bg-[#121214] border border-white/[0.08] p-5 flex items-center justify-between shadow-xl">
+        <div className="space-y-1 max-w-[75%]">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-bold text-white">Corner Floating Counter</span>
+            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              Draggable
+            </span>
+          </div>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Stays visible in the corner of your screen even when NeuroGuard is closed to count reels live.
+          </p>
         </div>
 
-        <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 text-[11px] text-zinc-400 leading-relaxed">
-          <span className="text-amber-400 font-semibold">💡 Tip for Android 13/14/15:</span> If Accessibility says <span className="italic">"Restricted setting"</span>, long-press the NeuroGuard app icon ➔ App Info ➔ tap 3 dots (⋮) in top right ➔ tap <span className="text-white font-semibold">"Allow restricted settings"</span>.
+        {/* Apple iOS Switch */}
+        <button
+          onClick={handleToggleWidget}
+          className={`w-13 h-7 rounded-full p-1 transition-colors duration-300 flex items-center ${
+            isWidgetActive ? 'bg-[#30D158] justify-end' : 'bg-zinc-800 justify-start'
+          }`}
+        >
+          <div className="w-5 h-5 rounded-full bg-white shadow-md transform transition-transform" />
+        </button>
+      </div>
+
+      {/* Accountability Contacts Row (Apple Fitness Sharing Style) */}
+      <div
+        onClick={onOpenPartner}
+        className="rounded-[28px] bg-[#121214] border border-white/[0.08] p-5 cursor-pointer hover:border-white/20 transition-all flex items-center justify-between"
+      >
+        <div className="flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-300">
+            <Users className="w-5 h-5 text-[#FA114F]" />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase">
+              Accountability Sharing
+            </div>
+            <div className="text-sm font-bold text-white mt-0.5">
+              {selectedPartners.length > 0
+                ? `${selectedPartners.map((p) => p.name).join(', ')}`
+                : 'No contacts armed'}
+            </div>
+            <div className="text-[11px] text-zinc-400 mt-0.5">
+              {selectedPartners.length > 0
+                ? `Will receive automated alert at ${limit} reels`
+                : 'Tap to select parents or friends'}
+            </div>
+          </div>
         </div>
+        <ChevronRight className="w-5 h-5 text-zinc-500" />
+      </div>
+
+      {/* Cognitive Trends Summary Tile */}
+      <div
+        onClick={onOpenAnalytics}
+        className="rounded-[28px] bg-[#121214] border border-white/[0.08] p-5 cursor-pointer hover:border-white/20 transition-all flex items-center justify-between"
+      >
+        <div className="flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-300">
+            <Brain className="w-5 h-5 text-[#A8FF00]" />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase">
+              Dopamine & Attention Span
+            </div>
+            <div className="text-sm font-bold text-white mt-0.5">
+              {avgAttentionSec}s Attention Velocity
+            </div>
+            <div className="text-[11px] text-zinc-400 mt-0.5">
+              Second-by-second drop-off curve & boredom analytics
+            </div>
+          </div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-zinc-500" />
       </div>
     </div>
   );

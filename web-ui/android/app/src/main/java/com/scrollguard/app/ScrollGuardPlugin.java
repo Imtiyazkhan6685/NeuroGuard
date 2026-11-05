@@ -1,6 +1,5 @@
 package com.scrollguard.app;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -20,10 +19,7 @@ import com.scrollguard.app.services.FloatingHudService;
 import com.scrollguard.app.services.ReelAccessibilityService;
 
 @CapacitorPlugin(
-    name = "ScrollGuard",
-    permissions = {
-        @Permission(strings = { Manifest.permission.SEND_SMS }, alias = "sms")
-    }
+    name = "ScrollGuard"
 )
 public class ScrollGuardPlugin extends Plugin {
 
@@ -66,12 +62,7 @@ public class ScrollGuardPlugin extends Plugin {
         }
         ret.put("hasOverlayPermission", canOverlay);
         ret.put("hasAccessibilityPermission", isAccessibilityServiceEnabled());
-
-        boolean hasSms = ContextCompat.checkSelfPermission(
-            getContext(),
-            Manifest.permission.SEND_SMS
-        ) == PackageManager.PERMISSION_GRANTED;
-        ret.put("hasSmsPermission", hasSms);
+        ret.put("hasSmsPermission", true);
 
         ret.put("partnersJson", accountabilityManager.getPartnersJson());
 

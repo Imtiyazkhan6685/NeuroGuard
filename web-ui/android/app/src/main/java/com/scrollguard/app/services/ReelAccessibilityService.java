@@ -68,9 +68,8 @@ public class ReelAccessibilityService extends AccessibilityService {
 
         } else if (!isTarget && isTargetAppInForeground) {
             isTargetAppInForeground = false;
-            Log.d(TAG, "Exited target app. Dismissing Floating HUD.");
-
-            launchHud(FloatingHudService.ACTION_HIDE);
+            Log.d(TAG, "Exited target app. Floating HUD remains accessible in corner.");
+            // Keep HUD mounted in corner even when switching apps/closing as requested
         }
     }
 

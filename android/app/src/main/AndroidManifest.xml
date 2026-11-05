@@ -6,9 +6,6 @@
     <!-- Permission to draw floating HUD over Instagram and YouTube -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Permission to trigger accountability SMS to parent / best friend -->
-    <uses-permission android:name="android.permission.SEND_SMS" />
-
     <!-- Network permission for Webhook & Cloud Sync -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
