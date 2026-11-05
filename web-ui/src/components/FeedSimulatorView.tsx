@@ -13,6 +13,7 @@ import {
   BellRing,
   AlertTriangle,
   Send,
+  Zap,
   X
 } from 'lucide-react';
 
@@ -87,13 +88,12 @@ const SAMPLE_REELS: SimulatedReel[] = [
 ];
 
 export const FeedSimulatorView: React.FC = () => {
-  const { events, partner, settings, addReelEvent } = useApp();
+  const { events, selectedPartners, settings, addReelEvent, triggerManualAlert, instagramCount, youtubeCount } = useApp();
   const [platform, setPlatform] = useState<'Instagram' | 'YouTube'>('Instagram');
   const [reelIndex, setReelIndex] = useState(0);
   const [dwellSeconds, setDwellSeconds] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
-  const [justDispatchedMsg, setJustDispatchedMsg] = useState('');
 
   const currentReel = SAMPLE_REELS[reelIndex % SAMPLE_REELS.length];
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -129,15 +129,17 @@ export const FeedSimulatorView: React.FC = () => {
 
     const nextCount = events.length + 1;
     if (nextCount === settings.dailyReelLimit) {
-      // Trigger accountability banner
-      setJustDispatchedMsg(
-        `🚨 Accountability Alert triggered to ${partner.name} (${partner.phone}): Daily limit of ${settings.dailyReelLimit} reels reached!`
-      );
       setShowNotificationPopup(true);
     }
 
     setReelIndex((prev) => prev + 1);
     setIsLiked(false);
+  };
+
+  const handleTriggerInstantLimit = async () => {
+    // Fill quota instantly to trigger the accountability message
+    await triggerManualAlert();
+    setShowNotificationPopup(true);
   };
 
   const isLimitReached = events.length >= settings.dailyReelLimit;
@@ -150,7 +152,7 @@ export const FeedSimulatorView: React.FC = () => {
       {/* Subtle animated pattern overlay */}
       <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
 
-      {/* Floating HUD Overlay (This is the requested Small Hover over Screen) */}
+      {/* Floating HUD Overlay (Small Hover Pill over Screen) */}
       <FloatingHudOverlay
         reelsWatched={events.length}
         dailyLimit={settings.dailyReelLimit}
@@ -159,16 +161,16 @@ export const FeedSimulatorView: React.FC = () => {
         isLimitReached={isLimitReached}
       />
 
-      {/* Top Platform Switcher & Sim Bar */}
+      {/* Top Platform Switcher & Instant Test Bar */}
       <div className="relative z-30 pt-3 px-4 flex items-center justify-between text-xs">
-        <div className="flex bg-black/40 backdrop-blur-md rounded-full p-1 border border-white/10">
+        <div className="flex bg-black/50 backdrop-blur-md rounded-full p-1 border border-white/10">
           <button
             onClick={() => setPlatform('Instagram')}
             className={`px-3 py-1 rounded-full font-medium transition-all ${
               platform === 'Instagram' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow' : 'text-zinc-400'
             }`}
           >
-            Instagram Reels
+            📷 IG Reels ({instagramCount})
           </button>
           <button
             onClick={() => setPlatform('YouTube')}
@@ -176,14 +178,18 @@ export const FeedSimulatorView: React.FC = () => {
               platform === 'YouTube' ? 'bg-red-600 text-white shadow' : 'text-zinc-400'
             }`}
           >
-            YouTube Shorts
+            ▶️ YT Shorts ({youtubeCount})
           </button>
         </div>
 
-        <div className="flex items-center space-x-1.5 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-full text-zinc-300 border border-white/10 text-[11px]">
-          <Volume2 className="w-3.5 h-3.5" />
-          <span>Sound On</span>
-        </div>
+        {/* Instant Limit Test Trigger */}
+        <button
+          onClick={handleTriggerInstantLimit}
+          className="flex items-center space-x-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-full text-[11px] font-bold backdrop-blur-md transition-all active:scale-95"
+        >
+          <Zap className="w-3 h-3 text-amber-400 fill-amber-400" />
+          <span>Test Alert</span>
+        </button>
       </div>
 
       {/* Simulated Content in the Middle */}
@@ -192,7 +198,7 @@ export const FeedSimulatorView: React.FC = () => {
           <Sparkles className="w-8 h-8 text-yellow-300 animate-spin" style={{ animationDuration: '8s' }} />
         </div>
         <span className="text-[11px] uppercase tracking-wider text-purple-300 font-semibold px-2.5 py-0.5 rounded-full bg-purple-900/50 border border-purple-500/30">
-          {currentReel.category} Reel #{reelIndex + 1}
+          {platform === 'Instagram' ? 'Instagram Reel' : 'YouTube Short'} #{reelIndex + 1}
         </span>
         <h3 className="text-lg font-bold text-white mt-2 max-w-xs">{currentReel.caption}</h3>
         <p className="text-xs text-zinc-400 mt-1 font-mono">Dwell time: {dwellSeconds}s / 60s</p>
@@ -200,7 +206,7 @@ export const FeedSimulatorView: React.FC = () => {
 
       {/* Bottom Overlay: Creator info & Floating Action Controls */}
       <div className="relative z-30 p-4 pb-6 flex items-end justify-between bg-gradient-to-t from-black/95 via-black/50 to-transparent">
-        {/* Left: Metadata */}
+        {/* Left: Metadata & Swipe action */}
         <div className="space-y-1.5 max-w-[70%] text-left">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-full bg-purple-600 border border-white/30 flex items-center justify-center font-bold text-xs text-white">
@@ -254,7 +260,7 @@ export const FeedSimulatorView: React.FC = () => {
       {/* Simulated Live Accountability SMS Alert Notification Banner */}
       {showNotificationPopup && (
         <div className="absolute top-4 left-3 right-3 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="ios-glass rounded-2xl p-3.5 shadow-2xl border border-red-500/40 bg-zinc-950/90 text-white">
+          <div className="ios-glass rounded-2xl p-4 shadow-2xl border border-red-500/50 bg-zinc-950/95 text-white space-y-2">
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-2.5">
                 <div className="p-2 rounded-xl bg-red-500 text-white shadow">
@@ -262,20 +268,21 @@ export const FeedSimulatorView: React.FC = () => {
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold text-red-400">ACCOUNTABILITY ALERT SENT</span>
+                    <span className="text-xs font-bold text-red-400">ACCOUNTABILITY ALERT DELIVERED</span>
                     <span className="text-[10px] text-zinc-400">Now</span>
                   </div>
-                  <p className="text-xs text-zinc-200 mt-1 font-medium leading-tight">
-                    SMS delivered to <span className="font-bold text-white">{partner.name}</span>:
+                  <p className="text-xs text-zinc-200 mt-1 font-semibold leading-tight">
+                    Dispatched to {selectedPartners.length} recipient{selectedPartners.length !== 1 ? 's' : ''}:{' '}
+                    <span className="text-white">{selectedPartners.map((p) => p.name).join(', ')}</span>
                   </p>
-                  <p className="text-[11px] text-zinc-400 italic mt-0.5 border-l-2 border-red-500/50 pl-2">
-                    "{partner.customTemplate.replace('{user}', 'Alex').replace('{limit}', settings.dailyReelLimit.toString()).replace('{watched}', events.length.toString()).replace('{avg_span}', '6.2').replace('{boredom_pct}', '74')}"
+                  <p className="text-[11px] text-zinc-400 italic mt-1 border-l-2 border-red-500/50 pl-2">
+                    "🚨 NeuroGuard Alert: Your partner hit their quota of {settings.dailyReelLimit} reels ({events.length} watched today). Please call them!"
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowNotificationPopup(false)}
-                className="text-zinc-500 hover:text-white p-1"
+                className="text-zinc-400 hover:text-white p-1 rounded-lg bg-white/5"
               >
                 <X className="w-4 h-4" />
               </button>

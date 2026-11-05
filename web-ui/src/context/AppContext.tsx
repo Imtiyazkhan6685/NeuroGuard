@@ -1,20 +1,31 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ReelEvent, AccountabilityPartner, DispatchedAlert, AppSettings } from '../types';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { ReelEvent, AccountabilityPartner, DispatchedAlert, AppSettings, NativeStats } from '../types';
+import { fetchNativeStats, savePartnersToNative, recordNativeSwipe, isNativeAndroid, NativeScrollGuard } from '../lib/nativeBridge';
 
 interface AppContextType {
   events: ReelEvent[];
-  partner: AccountabilityPartner;
+  partners: AccountabilityPartner[];
+  partner: AccountabilityPartner; // Primary selected partner
+  selectedPartners: AccountabilityPartner[];
   settings: AppSettings;
   alerts: DispatchedAlert[];
+  nativeStats: NativeStats | null;
   currentReelIndex: number;
   isSimulatorActive: boolean;
+  instagramCount: number;
+  youtubeCount: number;
   addReelEvent: (event: ReelEvent) => void;
-  updatePartner: (partner: Partial<AccountabilityPartner>) => void;
+  addPartner: (partner: Omit<AccountabilityPartner, 'id'>) => void;
+  removePartner: (id: string) => void;
+  updatePartner: (id: string, updates: Partial<AccountabilityPartner>) => void;
+  togglePartnerSelected: (id: string) => void;
+  selectPreset: (preset: 'all' | 'friends' | 'parents' | 'none') => void;
   updateSettings: (settings: Partial<AppSettings>) => void;
   triggerManualAlert: () => Promise<void>;
   resetToday: () => void;
   setIsSimulatorActive: (active: boolean) => void;
   setCurrentReelIndex: (idx: number) => void;
+  syncNativeStats: () => Promise<void>;
 }
 
 const INITIAL_EVENTS: ReelEvent[] = [
@@ -34,19 +45,48 @@ const INITIAL_EVENTS: ReelEvent[] = [
   { id: '14', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 0.1, dwellDurationMs: 1900, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: true, topic: 'Celebrity Gossip' },
 ];
 
-const INITIAL_PARTNER: AccountabilityPartner = {
-  name: 'Sarah (Mom)',
-  phone: '+1 (555) 382-9014',
-  role: 'Parent',
-  relationshipTag: 'Mom',
-  customTemplate: '🚨 NeuroGuard Alert: {user} just exceeded their daily limit of {limit} Reels ({watched} watched today). Their average attention span dropped to {avg_span}s with {boredom_pct}% skipped out of boredom. Please call them to keep them focused!',
-  autoSmsEnabled: true,
-  whatsappEnabled: true
-};
+const INITIAL_PARTNERS: AccountabilityPartner[] = [
+  {
+    id: 'partner_1',
+    name: 'Sarah (Mom)',
+    phone: '+1 (555) 382-9014',
+    role: 'Parent',
+    relationshipTag: 'Mom',
+    selected: true,
+    customTemplate: '🚨 NeuroGuard Alert: {user} just exceeded their daily limit of {limit} Reels ({watched} watched today). Please check in!'
+  },
+  {
+    id: 'partner_2',
+    name: 'Alex (Best Friend)',
+    phone: '+1 (555) 987-6543',
+    role: 'Best Friend',
+    relationshipTag: 'Best Friend',
+    selected: true,
+    customTemplate: '🚨 NeuroGuard Alert: Your friend reached their {limit} reel quota! Average focus: {avg_span}s ({boredom_pct}% boredom skips). Tell them to put their phone down!'
+  },
+  {
+    id: 'partner_3',
+    name: 'Dad',
+    phone: '+1 (555) 234-5678',
+    role: 'Parent',
+    relationshipTag: 'Dad',
+    selected: false,
+    customTemplate: ''
+  },
+  {
+    id: 'partner_4',
+    name: 'Maya (Partner)',
+    phone: '+1 (555) 876-5432',
+    role: 'Partner',
+    relationshipTag: 'Partner',
+    selected: false,
+    customTemplate: ''
+  }
+];
 
 const INITIAL_SETTINGS: AppSettings = {
-  dailyReelLimit: 15,
-  maxDailyMinutes: 20,
+  dailyReelLimit: 20,
+  maxDailyMinutes: 30,
   hardLockoutAfterLimit: true,
   enableFloatingHud: true,
   vibrateOnScroll: true,
@@ -61,9 +101,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : INITIAL_EVENTS;
   });
 
-  const [partner, setPartner] = useState<AccountabilityPartner>(() => {
-    const saved = localStorage.getItem('neuroguard_partner');
-    return saved ? JSON.parse(saved) : INITIAL_PARTNER;
+  const [partners, setPartners] = useState<AccountabilityPartner[]>(() => {
+    const saved = localStorage.getItem('neuroguard_partners_list');
+    return saved ? JSON.parse(saved) : INITIAL_PARTNERS;
   });
 
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -76,98 +116,165 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [nativeStats, setNativeStats] = useState<NativeStats | null>(null);
   const [currentReelIndex, setCurrentReelIndex] = useState(0);
   const [isSimulatorActive, setIsSimulatorActive] = useState(false);
 
+  // Sync with native Android on launch and every 3 seconds
+  const syncNativeStats = useCallback(async () => {
+    const stats = await fetchNativeStats();
+    if (stats) {
+      setNativeStats(stats);
+      if (stats.dailyLimit && stats.dailyLimit !== settings.dailyReelLimit) {
+        setSettings((prev) => ({ ...prev, dailyReelLimit: stats.dailyLimit }));
+      }
+    }
+  }, [settings.dailyReelLimit]);
+
+  useEffect(() => {
+    syncNativeStats();
+    const interval = setInterval(syncNativeStats, 3000);
+    return () => clearInterval(interval);
+  }, [syncNativeStats]);
+
+  // Persist local state
   useEffect(() => {
     localStorage.setItem('neuroguard_events', JSON.stringify(events));
   }, [events]);
 
   useEffect(() => {
-    localStorage.setItem('neuroguard_partner', JSON.stringify(partner));
-  }, [partner]);
+    localStorage.setItem('neuroguard_partners_list', JSON.stringify(partners));
+    // Also save to native Android shared prefs
+    savePartnersToNative(JSON.stringify(partners));
+  }, [partners]);
 
   useEffect(() => {
     localStorage.setItem('neuroguard_settings', JSON.stringify(settings));
+    if (isNativeAndroid()) {
+      NativeScrollGuard.setDailyLimit({ limit: settings.dailyReelLimit }).catch(() => {});
+    }
   }, [settings]);
 
   useEffect(() => {
     localStorage.setItem('neuroguard_alerts', JSON.stringify(alerts));
   }, [alerts]);
 
+  const selectedPartners = partners.filter((p) => p.selected);
+  const partner = selectedPartners[0] || partners[0] || INITIAL_PARTNERS[0];
+
+  const instagramCount = events.filter((e) => e.platform === 'Instagram Reels').length;
+  const youtubeCount = events.filter((e) => e.platform === 'YouTube Shorts').length;
+
   const addReelEvent = (event: ReelEvent) => {
     setEvents((prev) => {
       const updated = [event, ...prev];
-      // Check if threshold reached
       if (updated.length === settings.dailyReelLimit) {
-        dispatchAlert(updated.length, partner, settings, updated);
+        dispatchAlertsToAllSelected(updated.length, selectedPartners, settings, updated);
       }
       return updated;
     });
+
+    // Sync simulated swipe to native Android if on device
+    if (isNativeAndroid()) {
+      recordNativeSwipe(event.platform);
+    }
   };
 
-  const dispatchAlert = async (
+  const dispatchAlertsToAllSelected = async (
     count: number,
-    currentPartner: AccountabilityPartner,
+    recipients: AccountabilityPartner[],
     currentSettings: AppSettings,
     allEvents: ReelEvent[]
   ) => {
     const totalDwell = allEvents.reduce((acc, curr) => acc + curr.dwellDurationMs, 0);
-    const avgSpan = (totalDwell / allEvents.length / 1000).toFixed(1);
+    const avgSpan = (totalDwell / (allEvents.length || 1) / 1000).toFixed(1);
     const boredomCount = allEvents.filter((e) => e.wasSkippedEarly).length;
-    const boredomPct = Math.round((boredomCount / allEvents.length) * 100);
+    const boredomPct = Math.round((boredomCount / (allEvents.length || 1)) * 100);
 
-    const messageText = currentPartner.customTemplate
-      .replace('{user}', 'You')
-      .replace('{limit}', currentSettings.dailyReelLimit.toString())
-      .replace('{watched}', count.toString())
-      .replace('{avg_span}', avgSpan)
-      .replace('{boredom_pct}', boredomPct.toString());
+    const targetList = recipients.length > 0 ? recipients : [partners[0]];
+    const newAlerts: DispatchedAlert[] = [];
 
-    const newAlert: DispatchedAlert = {
-      id: `alert_${Date.now()}`,
-      timestamp: Date.now(),
-      partnerName: currentPartner.name,
-      partnerRole: currentPartner.role,
-      partnerPhone: currentPartner.phone,
-      reelsWatched: count,
-      dailyLimit: currentSettings.dailyReelLimit,
-      avgAttentionSec: Number(avgSpan),
-      boredomRate: boredomPct,
-      messageText,
-      status: 'DELIVERED'
-    };
+    for (const p of targetList) {
+      if (!p.phone || p.phone.trim() === '') continue;
 
-    setAlerts((prev) => [newAlert, ...prev]);
+      const template = p.customTemplate && p.customTemplate.trim() !== ''
+        ? p.customTemplate
+        : `🚨 NeuroGuard Alert: Your partner hit their quota of ${currentSettings.dailyReelLimit} reels (${count} watched today: ${instagramCount} IG, ${youtubeCount} YT). Attention span: ${avgSpan}s (${boredomPct}% boredom). Please call them!`;
 
-    // Send to optional backend webhook if reachable
-    try {
-      await fetch('http://localhost:3001/api/accountability/alert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          partnerName: currentPartner.name,
-          partnerPhone: currentPartner.phone,
-          partnerRole: currentPartner.role,
-          totalWatched: count,
-          dailyLimit: currentSettings.dailyReelLimit,
-          averageAttentionSpanSec: Number(avgSpan),
-          boredomRate: boredomPct,
-          message: messageText,
-          timestamp: Date.now()
-        })
+      const messageText = template
+        .replace('{user}', 'Your partner')
+        .replace('{limit}', currentSettings.dailyReelLimit.toString())
+        .replace('{watched}', count.toString())
+        .replace('{avg_span}', avgSpan)
+        .replace('{boredom_pct}', boredomPct.toString());
+
+      newAlerts.push({
+        id: `alert_${Date.now()}_${p.id}`,
+        timestamp: Date.now(),
+        partnerName: p.name,
+        partnerRole: p.role,
+        partnerPhone: p.phone,
+        reelsWatched: count,
+        dailyLimit: currentSettings.dailyReelLimit,
+        avgAttentionSec: Number(avgSpan),
+        boredomRate: boredomPct,
+        messageText,
+        status: 'DELIVERED'
       });
-    } catch {
-      // Backend optional for local UI demo
+    }
+
+    if (newAlerts.length > 0) {
+      setAlerts((prev) => [...newAlerts, ...prev]);
+    }
+
+    // Trigger native SMS dispatch via Android SmsManager
+    if (isNativeAndroid()) {
+      try {
+        await NativeScrollGuard.triggerTestAlert();
+      } catch (e) {
+        console.warn('Native alert dispatch error:', e);
+      }
     }
   };
 
   const triggerManualAlert = async () => {
-    await dispatchAlert(events.length, partner, settings, events);
+    await dispatchAlertsToAllSelected(events.length, selectedPartners, settings, events);
   };
 
-  const updatePartner = (updates: Partial<AccountabilityPartner>) => {
-    setPartner((prev) => ({ ...prev, ...updates }));
+  const addPartner = (newP: Omit<AccountabilityPartner, 'id'>) => {
+    const created: AccountabilityPartner = {
+      ...newP,
+      id: `partner_${Date.now()}`
+    };
+    setPartners((prev) => [...prev, created]);
+  };
+
+  const removePartner = (id: string) => {
+    setPartners((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const updatePartner = (id: string, updates: Partial<AccountabilityPartner>) => {
+    setPartners((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+    );
+  };
+
+  const togglePartnerSelected = (id: string) => {
+    setPartners((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, selected: !p.selected } : p))
+    );
+  };
+
+  const selectPreset = (preset: 'all' | 'friends' | 'parents' | 'none') => {
+    setPartners((prev) =>
+      prev.map((p) => {
+        if (preset === 'all') return { ...p, selected: true };
+        if (preset === 'none') return { ...p, selected: false };
+        if (preset === 'friends') return { ...p, selected: p.role === 'Best Friend' || p.role === 'Partner' };
+        if (preset === 'parents') return { ...p, selected: p.role === 'Parent' };
+        return p;
+      })
+    );
   };
 
   const updateSettings = (updates: Partial<AppSettings>) => {
@@ -182,18 +289,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         events,
+        partners,
         partner,
+        selectedPartners,
         settings,
         alerts,
+        nativeStats,
         currentReelIndex,
         isSimulatorActive,
+        instagramCount,
+        youtubeCount,
         addReelEvent,
+        addPartner,
+        removePartner,
         updatePartner,
+        togglePartnerSelected,
+        selectPreset,
         updateSettings,
         triggerManualAlert,
         resetToday,
         setIsSimulatorActive,
-        setCurrentReelIndex
+        setCurrentReelIndex,
+        syncNativeStats
       }}
     >
       {children}

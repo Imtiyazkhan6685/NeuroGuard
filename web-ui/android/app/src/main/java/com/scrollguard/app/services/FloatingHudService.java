@@ -110,6 +110,10 @@ public class FloatingHudService extends Service {
     @SuppressLint("ClickableViewAccessibility")
     private void showOverlay() {
         if (isHudAttached || hudView != null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
+            Log.w("FloatingHudService", "Overlay permission not granted. Cannot show HUD.");
+            return;
+        }
 
         int layoutType = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY

@@ -1,32 +1,36 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
+import { NativeStats } from '../types';
 
 interface ScrollGuardPluginInterface {
-  getNativeStats(): Promise<{
-    reelsWatched: number;
-    dailyLimit: number;
-    avgAttentionSpan: number;
-    boredomRate: number;
-    microSkips: number;
-    hasOverlayPermission: boolean;
-    hasSmsPermission: boolean;
-  }>;
+  getNativeStats(): Promise<NativeStats>;
   requestOverlayPermission(): Promise<void>;
   requestAccessibilityPermission(): Promise<void>;
   toggleFloatingHud(options: { show: boolean }): Promise<void>;
-  saveAccountabilityPartner(options: {
-    name: string;
-    phone: string;
-    role: string;
-    customTemplate?: string;
-  }): Promise<void>;
+  savePartners(options: { partnersJson: string }): Promise<void>;
+  getPartners(): Promise<{ partnersJson: string }>;
   triggerTestAlert(): Promise<void>;
   setDailyLimit(options: { limit: number }): Promise<void>;
+  recordSimulatedSwipe(options: { platform: string }): Promise<void>;
+  openSmsIntent(options: { phone: string; message: string }): Promise<void>;
+  openWhatsAppIntent(options: { phone: string; message: string }): Promise<void>;
 }
 
 export const NativeScrollGuard = registerPlugin<ScrollGuardPluginInterface>('ScrollGuard');
 
 export const isNativeAndroid = () => {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+};
+
+export const fetchNativeStats = async (): Promise<NativeStats | null> => {
+  if (isNativeAndroid()) {
+    try {
+      return await NativeScrollGuard.getNativeStats();
+    } catch (e) {
+      console.warn('Native stats not available:', e);
+      return null;
+    }
+  }
+  return null;
 };
 
 export const requestAndroidOverlayPermission = async () => {
@@ -66,4 +70,59 @@ export const toggleAndroidFloatingHud = async (show: boolean) => {
     }
   }
   return false;
+};
+
+export const savePartnersToNative = async (partnersJson: string) => {
+  if (isNativeAndroid()) {
+    try {
+      await NativeScrollGuard.savePartners({ partnersJson });
+      return true;
+    } catch (e) {
+      console.error('Failed to save partners to native:', e);
+      return false;
+    }
+  }
+  return false;
+};
+
+export const recordNativeSwipe = async (platform: string) => {
+  if (isNativeAndroid()) {
+    try {
+      await NativeScrollGuard.recordSimulatedSwipe({ platform });
+      return true;
+    } catch (e) {
+      console.error('Failed to record native swipe:', e);
+      return false;
+    }
+  }
+  return false;
+};
+
+export const openNativeSms = async (phone: string, message: string) => {
+  if (isNativeAndroid()) {
+    try {
+      await NativeScrollGuard.openSmsIntent({ phone, message });
+      return true;
+    } catch (e) {
+      console.error('Failed to open native SMS intent:', e);
+    }
+  }
+  // Browser fallback
+  window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_blank');
+  return true;
+};
+
+export const openNativeWhatsApp = async (phone: string, message: string) => {
+  if (isNativeAndroid()) {
+    try {
+      await NativeScrollGuard.openWhatsAppIntent({ phone, message });
+      return true;
+    } catch (e) {
+      console.error('Failed to open native WhatsApp:', e);
+    }
+  }
+  // Browser fallback
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`, '_blank');
+  return true;
 };

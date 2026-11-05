@@ -53,6 +53,26 @@ public class AttentionSpanEngine {
         return sessionEvents.size();
     }
 
+    public static int getInstagramCount() {
+        int count = 0;
+        synchronized (sessionEvents) {
+            for (ReelEvent e : sessionEvents) {
+                if (e.platform != null && e.platform.contains("Instagram")) count++;
+            }
+        }
+        return count;
+    }
+
+    public static int getYouTubeCount() {
+        int count = 0;
+        synchronized (sessionEvents) {
+            for (ReelEvent e : sessionEvents) {
+                if (e.platform != null && e.platform.contains("YouTube")) count++;
+            }
+        }
+        return count;
+    }
+
     public static int getDailyLimit() {
         return dailyLimit;
     }

@@ -14,13 +14,13 @@ export interface ReelEvent {
 export type PartnerRole = 'Parent' | 'Best Friend' | 'Partner' | 'Sibling' | 'Mentor';
 
 export interface AccountabilityPartner {
+  id: string;
   name: string;
   phone: string;
   role: PartnerRole;
   relationshipTag: string;
-  customTemplate: string;
-  autoSmsEnabled: boolean;
-  whatsappEnabled: boolean;
+  selected: boolean; // whether this contact will receive automated alerts
+  customTemplate?: string;
 }
 
 export interface DispatchedAlert {
@@ -44,4 +44,18 @@ export interface AppSettings {
   enableFloatingHud: boolean;
   vibrateOnScroll: boolean;
   hudPosition: { x: number; y: number };
+}
+
+export interface NativeStats {
+  reelsWatched: number;
+  instagramCount: number;
+  youtubeCount: number;
+  dailyLimit: number;
+  avgAttentionSpan: number;
+  boredomRate: number;
+  microSkips: number;
+  hasOverlayPermission: boolean;
+  hasAccessibilityPermission: boolean;
+  hasSmsPermission: boolean;
+  partnersJson?: string;
 }

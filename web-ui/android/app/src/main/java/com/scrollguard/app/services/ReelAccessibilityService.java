@@ -2,6 +2,7 @@ package com.scrollguard.app.services;
 
 import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
+import android.os.Build;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
@@ -11,7 +12,7 @@ public class ReelAccessibilityService extends AccessibilityService {
     private static final String TAG = "ReelAccessibilitySvc";
     private static final String PKG_INSTAGRAM = "com.instagram.android";
     private static final String PKG_YOUTUBE = "com.google.android.youtube";
-    private static final long SCROLL_DEBOUNCE_MS = 1200L;
+    private static final long SCROLL_DEBOUNCE_MS = 1000L;
 
     private AccountabilityManager accountabilityManager;
     private long lastScrollTimestamp = 0L;
@@ -22,6 +23,20 @@ public class ReelAccessibilityService extends AccessibilityService {
         super.onCreate();
         accountabilityManager = new AccountabilityManager(this);
         Log.i(TAG, "ReelAccessibilityService created");
+    }
+
+    private void launchHud(String action) {
+        try {
+            Intent hudIntent = new Intent(this, FloatingHudService.class);
+            hudIntent.setAction(action);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(hudIntent);
+            } else {
+                startService(hudIntent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to launch HUD with action " + action + ": " + e.getMessage());
+        }
     }
 
     @Override
@@ -35,7 +50,8 @@ public class ReelAccessibilityService extends AccessibilityService {
                 handleWindowStateChanged(packageName);
                 break;
             case AccessibilityEvent.TYPE_VIEW_SCROLLED:
-                handleViewScrolled(packageName);
+            case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
+                handlePotentialScroll(packageName, event);
                 break;
         }
     }
@@ -48,22 +64,17 @@ public class ReelAccessibilityService extends AccessibilityService {
             Log.d(TAG, "Target app opened: " + packageName + ". Mounting Floating HUD.");
 
             AttentionSpanEngine.startReelView();
-
-            Intent hudIntent = new Intent(this, FloatingHudService.class);
-            hudIntent.setAction(FloatingHudService.ACTION_SHOW);
-            startService(hudIntent);
+            launchHud(FloatingHudService.ACTION_SHOW);
 
         } else if (!isTarget && isTargetAppInForeground) {
             isTargetAppInForeground = false;
             Log.d(TAG, "Exited target app. Dismissing Floating HUD.");
 
-            Intent hudIntent = new Intent(this, FloatingHudService.class);
-            hudIntent.setAction(FloatingHudService.ACTION_HIDE);
-            startService(hudIntent);
+            launchHud(FloatingHudService.ACTION_HIDE);
         }
     }
 
-    private void handleViewScrolled(String packageName) {
+    private void handlePotentialScroll(String packageName, AccessibilityEvent event) {
         if (!PKG_INSTAGRAM.equals(packageName) && !PKG_YOUTUBE.equals(packageName)) return;
 
         long now = SystemClock.uptimeMillis();
@@ -71,16 +82,14 @@ public class ReelAccessibilityService extends AccessibilityService {
         lastScrollTimestamp = now;
 
         String platform = PKG_INSTAGRAM.equals(packageName) ? "Instagram Reels" : "YouTube Shorts";
-        Log.i(TAG, "Reel scroll event detected on " + platform);
+        Log.i(TAG, "Reel swipe/scroll event detected on " + platform);
 
         AttentionSpanEngine.recordReelSwipe(platform);
 
         // Update HUD
-        Intent updateIntent = new Intent(this, FloatingHudService.class);
-        updateIntent.setAction(FloatingHudService.ACTION_UPDATE_COUNT);
-        startService(updateIntent);
+        launchHud(FloatingHudService.ACTION_UPDATE_COUNT);
 
-        // Check if daily limit reached
+        // Check if daily limit reached and trigger automated alerts to selected parents/friends
         if (accountabilityManager != null) {
             accountabilityManager.checkAndTriggerAlertIfLimitReached();
         }
@@ -94,8 +103,6 @@ public class ReelAccessibilityService extends AccessibilityService {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Intent hudIntent = new Intent(this, FloatingHudService.class);
-        hudIntent.setAction(FloatingHudService.ACTION_HIDE);
-        startService(hudIntent);
+        launchHud(FloatingHudService.ACTION_HIDE);
     }
 }

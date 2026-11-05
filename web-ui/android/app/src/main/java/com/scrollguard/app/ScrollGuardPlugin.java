@@ -17,6 +17,7 @@ import com.getcapacitor.annotation.Permission;
 import com.scrollguard.app.services.AccountabilityManager;
 import com.scrollguard.app.services.AttentionSpanEngine;
 import com.scrollguard.app.services.FloatingHudService;
+import com.scrollguard.app.services.ReelAccessibilityService;
 
 @CapacitorPlugin(
     name = "ScrollGuard",
@@ -34,10 +35,26 @@ public class ScrollGuardPlugin extends Plugin {
         accountabilityManager = new AccountabilityManager(getContext());
     }
 
+    private boolean isAccessibilityServiceEnabled() {
+        try {
+            Context context = getContext();
+            String enabledServices = Settings.Secure.getString(
+                context.getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            );
+            if (enabledServices == null) return false;
+            return enabledServices.contains(context.getPackageName());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     @PluginMethod
     public void getNativeStats(PluginCall call) {
         JSObject ret = new JSObject();
         ret.put("reelsWatched", AttentionSpanEngine.getTotalReelsWatchedToday());
+        ret.put("instagramCount", AttentionSpanEngine.getInstagramCount());
+        ret.put("youtubeCount", AttentionSpanEngine.getYouTubeCount());
         ret.put("dailyLimit", AttentionSpanEngine.getDailyLimit());
         ret.put("avgAttentionSpan", AttentionSpanEngine.getAverageAttentionSpanSeconds());
         ret.put("boredomRate", AttentionSpanEngine.getBoredomRatePercentage());
@@ -48,12 +65,15 @@ public class ScrollGuardPlugin extends Plugin {
             canOverlay = Settings.canDrawOverlays(getContext());
         }
         ret.put("hasOverlayPermission", canOverlay);
+        ret.put("hasAccessibilityPermission", isAccessibilityServiceEnabled());
 
         boolean hasSms = ContextCompat.checkSelfPermission(
             getContext(),
             Manifest.permission.SEND_SMS
         ) == PackageManager.PERMISSION_GRANTED;
         ret.put("hasSmsPermission", hasSms);
+
+        ret.put("partnersJson", accountabilityManager.getPartnersJson());
 
         call.resolve(ret);
     }
@@ -87,24 +107,28 @@ public class ScrollGuardPlugin extends Plugin {
         boolean shouldShow = (show != null) ? show : true;
         Intent intent = new Intent(getContext(), FloatingHudService.class);
         intent.setAction(shouldShow ? FloatingHudService.ACTION_SHOW : FloatingHudService.ACTION_HIDE);
-        getContext().startService(intent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getContext().startForegroundService(intent);
+        } else {
+            getContext().startService(intent);
+        }
         call.resolve();
     }
 
     @PluginMethod
-    public void saveAccountabilityPartner(PluginCall call) {
-        String name = call.getString("name");
-        String phone = call.getString("phone");
-        String role = call.getString("role");
-        String customMsg = call.getString("customTemplate");
-
-        accountabilityManager.savePartner(
-            name != null ? name : "Mom",
-            phone != null ? phone : "",
-            role != null ? role : "Parent",
-            customMsg != null ? customMsg : ""
-        );
+    public void savePartners(PluginCall call) {
+        String json = call.getString("partnersJson");
+        if (json != null) {
+            accountabilityManager.savePartners(json);
+        }
         call.resolve();
+    }
+
+    @PluginMethod
+    public void getPartners(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("partnersJson", accountabilityManager.getPartnersJson());
+        call.resolve(ret);
     }
 
     @PluginMethod
@@ -121,5 +145,61 @@ public class ScrollGuardPlugin extends Plugin {
         Integer limit = call.getInt("limit");
         AttentionSpanEngine.setDailyLimit(limit != null ? limit : 20);
         call.resolve();
+    }
+
+    @PluginMethod
+    public void recordSimulatedSwipe(PluginCall call) {
+        String platform = call.getString("platform");
+        if (platform == null) platform = "Instagram Reels";
+
+        AttentionSpanEngine.recordReelSwipe(platform);
+
+        // Update floating HUD if attached
+        Intent updateIntent = new Intent(getContext(), FloatingHudService.class);
+        updateIntent.setAction(FloatingHudService.ACTION_UPDATE_COUNT);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getContext().startForegroundService(updateIntent);
+            } else {
+                getContext().startService(updateIntent);
+            }
+        } catch (Exception ignored) {}
+
+        accountabilityManager.checkAndTriggerAlertIfLimitReached();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void openSmsIntent(PluginCall call) {
+        String phone = call.getString("phone");
+        String message = call.getString("message");
+        try {
+            Intent intent = new Intent(Intent.ACTION_SENDTO);
+            intent.setData(Uri.parse("smsto:" + (phone != null ? phone : "")));
+            if (message != null) {
+                intent.putExtra("sms_body", message);
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Failed to open SMS app: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void openWhatsAppIntent(PluginCall call) {
+        String phone = call.getString("phone");
+        String message = call.getString("message");
+        try {
+            String cleanPhone = (phone != null) ? phone.replaceAll("[^0-9]", "") : "";
+            String encodedMsg = (message != null) ? java.net.URLEncoder.encode(message, "UTF-8") : "";
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodedMsg));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Failed to open WhatsApp: " + e.getMessage());
+        }
     }
 }
