@@ -43,39 +43,52 @@ jobs:
       - name: Grant Execute Permission to Gradlew
         run: chmod +x web-ui/android/gradlew
 
-      - name: Build Android Debug APK
+      - name: Build Android Release & Debug APKs
         run: |
           cd web-ui/android
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleRelease assembleDebug --stacktrace
 
       - name: Locate & Copy APK
         run: |
-          find web-ui/android/app/build/outputs/apk -name "*.apk" -exec cp {} NeuroGuard.apk \;
+          find web-ui/android/app/build/outputs/apk -name "*release*.apk" -exec cp {} NeuroGuard.apk \;
+          if [ ! -f NeuroGuard.apk ]; then
+            find web-ui/android/app/build/outputs/apk -name "*.apk" -exec cp {} NeuroGuard.apk \;
+          fi
           ls -lh NeuroGuard.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NeuroGuard-Debug-APK
+          name: NeuroGuard-APK-v1.0.1
           path: NeuroGuard.apk
           retention-days: 14
 
-      - name: Create or Update GitHub Release
+      - name: Create or Update GitHub Release v1.0.1
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: v1.0.1
+          name: NeuroGuard v1.0.1 (Android APK)
+          make_latest: true
+          body: |
+            ## 📱 NeuroGuard v1.0.1 Android Release
+            
+            ### Fixes & Enhancements:
+            - **Fixed "Package appears to be invalid"**: Re-aligned SDK targets (`targetSdkVersion 34`, `compileSdkVersion 35`) and embedded a permanent deterministic keystore so updates install seamlessly over existing installations.
+            - **Updated Version**: Incremented to `versionCode 2`, `versionName 1.0.1`.
+            - **Floating Corner Widget**: Real Instagram & YouTube Shorts tracking with edge-snapping and tap-to-dashboard.
+            - **100% Play Protect Safe**: Zero sensitive SMS daemon permissions.
+            - **Apple Fitness Interface**: Concentric Neon Tri-Rings & 7-Day Consistency Strip.
+          files: NeuroGuard.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Also Update Legacy v1.0.0 Asset
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
           tag_name: v1.0.0
           name: NeuroGuard v1.0.0 (Android APK)
-          body: |
-            ## 📱 NeuroGuard Android Release
-            
-            Download `NeuroGuard.apk` directly on your Android phone to install!
-            
-            ### Features:
-            - **Floating Hover HUD** over Instagram Reels & YouTube Shorts (`SYSTEM_ALERT_WINDOW`).
-            - **Live Dwell Stopwatch** and attention span decay detection (`AccessibilityService`).
-            - **Automated Accountability Alert** to Parents / Best Friend when daily limit is reached.
-            - **Boredom & Attention Span Drop-Off Analytics**.
           files: NeuroGuard.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

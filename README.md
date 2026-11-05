@@ -6,14 +6,15 @@
 ---
 
 <p align="center">
-  <a href="https://github.com/Imtiyazkhan6685/NeuroGuard/releases/download/v1.0.0/NeuroGuard.apk">
-    <img src="https://img.shields.io/badge/📥_Download-NeuroGuard.apk_(v1.0.0)-30D158?style=for-the-badge&logo=android&logoColor=white" alt="Download NeuroGuard APK" height="52" />
+  <a href="https://github.com/Imtiyazkhan6685/NeuroGuard/releases/download/v1.0.1/NeuroGuard.apk">
+    <img src="https://img.shields.io/badge/📥_Download-NeuroGuard.apk_(v1.0.1)-30D158?style=for-the-badge&logo=android&logoColor=white" alt="Download NeuroGuard APK" height="52" />
   </a>
 </p>
 
 <p align="center">
-  <b>Direct APK Download Link:</b><br/>
-  <code>https://github.com/Imtiyazkhan6685/NeuroGuard/releases/download/v1.0.0/NeuroGuard.apk</code>
+  <b>Direct APK Download Link (v1.0.1 Latest):</b><br/>
+  <code>https://github.com/Imtiyazkhan6685/NeuroGuard/releases/download/v1.0.1/NeuroGuard.apk</code><br/>
+  <small>Universal redirect: <code>https://github.com/Imtiyazkhan6685/NeuroGuard/releases/latest/download/NeuroGuard.apk</code></small>
 </p>
 
 ---
@@ -37,7 +38,7 @@ Installing takes less than **60 seconds**:
 
 ### Step 1: Download the APK
 On your Android phone, download the APK from the link above:  
-👉 **[Download NeuroGuard.apk](https://github.com/Imtiyazkhan6685/NeuroGuard/releases/download/v1.0.0/NeuroGuard.apk)** *(~4.2 MB)*
+👉 **[Download NeuroGuard.apk (v1.0.1)](https://github.com/Imtiyazkhan6685/NeuroGuard/releases/download/v1.0.1/NeuroGuard.apk)** *(~4.2 MB)*
 
 ### Step 2: Install the APK
 1. Tap the downloaded file in your browser or find `NeuroGuard.apk` in your **Downloads** folder.
