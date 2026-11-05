@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">NeuroGuard</string>
+    <string name="accessibility_service_description">Monitors Instagram Reels and YouTube Shorts view duration, detects scroll velocity to measure attention span, and maintains the floating HUD counter.</string>
+    <string name="hud_initial_count">0/25</string>
+    <string name="hud_dwell_label">00:00</string>
+    <string name="accountability_default_template">🚨 NeuroGuard Alert: %s just reached their daily limit of %d short-form reels. Average attention span was %s seconds. Please check in with them to break the doomscroll loop!</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NeuroGuard</string>
+    <string name="title_activity_main">NeuroGuard</string>
+    <string name="package_name">com.scrollguard.app</string>
+    <string name="custom_url_scheme">com.scrollguard.app</string>
+    <string name="accessibility_service_description">Monitors Instagram Reels and YouTube Shorts view duration, detects scroll velocity to measure attention span, and maintains the floating HUD counter.</string>
+</resources>

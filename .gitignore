@@ -1,0 +1,11 @@
+node_modules/
+.gradle/
+build/
+*/build/
+*/*/build/
+dist/
+.DS_Store
+*.log
+local.properties
+.idea/
+*.iml

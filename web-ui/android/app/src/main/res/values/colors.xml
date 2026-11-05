@@ -1,0 +1,13 @@
+<resources>
+    <color name="bg_dark">#0F1117</color>
+    <color name="card_bg">#1A1D27</color>
+    <color name="accent_blue">#0A84FF</color>
+    <color name="accent_purple">#5E5CE6</color>
+    <color name="accent_coral">#FF453A</color>
+    <color name="accent_amber">#FF9F0A</color>
+    <color name="accent_green">#30D158</color>
+    <color name="text_primary">#F2F2F7</color>
+    <color name="text_secondary">#8E8E93</color>
+    <color name="hud_glass_bg">#E6141724</color>
+    <color name="hud_border">#33FFFFFF</color>
+</resources>
