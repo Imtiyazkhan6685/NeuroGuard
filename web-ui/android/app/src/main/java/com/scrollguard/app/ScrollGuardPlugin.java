@@ -2,21 +2,17 @@ package com.scrollguard.app;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
-import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-import com.getcapacitor.annotation.Permission;
 import com.scrollguard.app.services.AccountabilityManager;
 import com.scrollguard.app.services.AttentionSpanEngine;
 import com.scrollguard.app.services.FloatingHudService;
-import com.scrollguard.app.services.ReelAccessibilityService;
 
 @CapacitorPlugin(
     name = "ScrollGuard"
@@ -28,6 +24,7 @@ public class ScrollGuardPlugin extends Plugin {
     @Override
     public void load() {
         super.load();
+        AttentionSpanEngine.init(getContext());
         accountabilityManager = new AccountabilityManager(getContext());
     }
 
@@ -47,6 +44,7 @@ public class ScrollGuardPlugin extends Plugin {
 
     @PluginMethod
     public void getNativeStats(PluginCall call) {
+        AttentionSpanEngine.init(getContext());
         JSObject ret = new JSObject();
         ret.put("reelsWatched", AttentionSpanEngine.getTotalReelsWatchedToday());
         ret.put("instagramCount", AttentionSpanEngine.getInstagramCount());
@@ -57,6 +55,8 @@ public class ScrollGuardPlugin extends Plugin {
         ret.put("avgAttentionSpan", AttentionSpanEngine.getAverageAttentionSpanSeconds());
         ret.put("boredomRate", AttentionSpanEngine.getBoredomRatePercentage());
         ret.put("microSkips", AttentionSpanEngine.getMicroSkipsCount());
+        ret.put("streakDays", AttentionSpanEngine.getStreakDays());
+        ret.put("history7Days", AttentionSpanEngine.get7DayHistory(getContext()));
 
         boolean canOverlay = true;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -65,7 +65,6 @@ public class ScrollGuardPlugin extends Plugin {
         ret.put("hasOverlayPermission", canOverlay);
         ret.put("hasAccessibilityPermission", isAccessibilityServiceEnabled());
         ret.put("hasSmsPermission", true);
-
         ret.put("partnersJson", accountabilityManager.getPartnersJson());
 
         call.resolve(ret);
@@ -136,7 +135,34 @@ public class ScrollGuardPlugin extends Plugin {
     @PluginMethod
     public void setDailyLimit(PluginCall call) {
         Integer limit = call.getInt("limit");
-        AttentionSpanEngine.setDailyLimit(limit != null ? limit : 20);
+        if (limit != null) {
+            AttentionSpanEngine.setDailyLimit(limit, getContext());
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void setMaxDailyMinutes(PluginCall call) {
+        Integer minutes = call.getInt("minutes");
+        if (minutes != null) {
+            AttentionSpanEngine.setMaxDailyMinutes(minutes, getContext());
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void resetToday(PluginCall call) {
+        AttentionSpanEngine.clearToday(getContext());
+        // Notify HUD to update view
+        Intent intent = new Intent(getContext(), FloatingHudService.class);
+        intent.setAction(FloatingHudService.ACTION_UPDATE_COUNT);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getContext().startForegroundService(intent);
+            } else {
+                getContext().startService(intent);
+            }
+        } catch (Exception ignored) {}
         call.resolve();
     }
 
@@ -145,7 +171,7 @@ public class ScrollGuardPlugin extends Plugin {
         String platform = call.getString("platform");
         if (platform == null) platform = "Instagram Reels";
 
-        AttentionSpanEngine.recordReelSwipe(platform);
+        AttentionSpanEngine.recordReelSwipe(platform, getContext());
 
         // Update floating HUD if attached
         Intent updateIntent = new Intent(getContext(), FloatingHudService.class);

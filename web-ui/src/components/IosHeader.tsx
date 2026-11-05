@@ -1,53 +1,61 @@
-import React, { useState, useEffect } from 'react';
-import { Wifi, Battery } from 'lucide-react';
+import React from 'react';
+import { useApp } from '../context/AppContext';
+import { isNativeAndroid } from '../lib/nativeBridge';
+import { ShieldCheck, Flame, Crown } from 'lucide-react';
 
 interface IosHeaderProps {
-  dynamicIslandContent?: React.ReactNode;
+  onOpenPro?: () => void;
 }
 
-export const IosHeader: React.FC<IosHeaderProps> = ({ dynamicIslandContent }) => {
-  const [time, setTime] = useState('9:41');
-
-  useEffect(() => {
-    const update = () => {
-      const now = new Date();
-      setTime(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: false }));
-    };
-    update();
-    const interval = setInterval(update, 10000);
-    return () => clearInterval(interval);
-  }, []);
+export const IosHeader: React.FC<IosHeaderProps> = ({ onOpenPro }) => {
+  const { streakDays, isPro } = useApp();
 
   return (
-    <div className="relative w-full pt-2 pb-2 px-6 flex items-center justify-between z-50 select-none text-white font-semibold text-xs tracking-tight">
-      {/* Time */}
-      <span className="w-14 pl-1 font-medium">{time}</span>
-
-      {/* Dynamic Island */}
-      <div className="flex-1 flex justify-center">
-        <div className="h-7 min-w-[124px] max-w-[200px] px-3 bg-black rounded-full border border-white/10 flex items-center justify-center space-x-2 shadow-inner transition-all duration-300">
-          {dynamicIslandContent || (
-            <>
-              <div className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse" />
-              <span className="text-[10px] text-zinc-400 font-normal">NeuroGuard Active</span>
-            </>
-          )}
+    <header className="w-full pt-3 pb-2 px-5 flex items-center justify-between z-30 select-none border-b border-white/[0.04]">
+      {/* Brand & System Status */}
+      <div className="flex items-center space-x-2.5">
+        <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-[#FA114F] to-[#A8FF00] p-[1.5px] shadow-[0_0_12px_#FA114F40]">
+          <div className="w-full h-full bg-black rounded-[10px] flex items-center justify-center">
+            <span className="text-xs font-black text-white">N</span>
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center space-x-1.5">
+            <span className="text-xs font-black tracking-tight text-white">NeuroGuard</span>
+            {isPro && (
+              <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-gradient-to-r from-amber-400 to-yellow-500 text-black">
+                PRO
+              </span>
+            )}
+          </div>
+          <div className="flex items-center space-x-1 text-[10px] text-zinc-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] animate-pulse" />
+            <span className="font-medium text-[#30D158]">Armed</span>
+          </div>
         </div>
       </div>
 
-      {/* Status Icons */}
-      <div className="w-14 flex items-center justify-end space-x-1.5 pr-1">
-        <div className="flex space-x-0.5 items-end h-2.5">
-          <div className="w-0.5 h-1 bg-white rounded-full" />
-          <div className="w-0.5 h-1.5 bg-white rounded-full" />
-          <div className="w-0.5 h-2 bg-white rounded-full" />
-          <div className="w-0.5 h-2.5 bg-white rounded-full" />
+      {/* Streak Badge & Pro Trigger */}
+      <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 font-bold text-xs">
+          <Flame className="w-3.5 h-3.5 fill-orange-400 text-orange-400" />
+          <span>{streakDays}d Streak</span>
         </div>
-        <Wifi className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-        <div className="flex items-center">
-          <Battery className="w-4 h-4 text-white stroke-[2.5]" />
-        </div>
+
+        {onOpenPro && (
+          <button
+            onClick={onOpenPro}
+            className={`p-1.5 rounded-xl border transition-all ${
+              isPro
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                : 'bg-zinc-900 border-white/10 text-zinc-300 hover:text-white'
+            }`}
+            title="NeuroGuard Pro"
+          >
+            <Crown className="w-4 h-4" />
+          </button>
+        )}
       </div>
-    </div>
+    </header>
   );
 };

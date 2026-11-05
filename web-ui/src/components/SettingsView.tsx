@@ -1,10 +1,34 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { requestAndroidOverlayPermission, requestAndroidAccessibility, toggleAndroidFloatingHud } from '../lib/nativeBridge';
-import { Sliders, Eye, Lock, RotateCcw, Smartphone, ShieldCheck, CheckCircle2, ChevronRight } from 'lucide-react';
+import {
+  requestAndroidOverlayPermission,
+  requestAndroidAccessibility,
+  toggleAndroidFloatingHud
+} from '../lib/nativeBridge';
+import {
+  Sliders,
+  Eye,
+  Lock,
+  RotateCcw,
+  Smartphone,
+  ShieldCheck,
+  CheckCircle2,
+  ChevronRight,
+  Crown,
+  HelpCircle,
+  Sparkles
+} from 'lucide-react';
 
-export const SettingsView: React.FC = () => {
-  const { settings, updateSettings, resetToday, events, nativeStats } = useApp();
+interface SettingsViewProps {
+  onOpenPro?: () => void;
+  onOpenOnboarding?: () => void;
+}
+
+export const SettingsView: React.FC<SettingsViewProps> = ({
+  onOpenPro,
+  onOpenOnboarding
+}) => {
+  const { settings, updateSettings, resetToday, totalReels, nativeStats, isPro } = useApp();
 
   return (
     <div className="space-y-6 pb-28 text-white select-none">
@@ -17,11 +41,39 @@ export const SettingsView: React.FC = () => {
         </p>
       </div>
 
+      {/* Pro Membership Banner */}
+      <div
+        onClick={onOpenPro}
+        className="rounded-[32px] bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent border border-amber-500/30 p-5 flex items-center justify-between cursor-pointer hover:border-amber-500/60 transition-all shadow-xl"
+      >
+        <div className="flex items-center space-x-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
+            <Crown className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-1.5">
+              <span className="text-sm font-black text-white">
+                {isPro ? 'NeuroGuard Ultra Active' : 'Upgrade to NeuroGuard Ultra'}
+              </span>
+              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-400 text-black">
+                PRO
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              {isPro
+                ? 'Full access: Strict Lockout, Unlimited Contacts, 30-Day Heatmaps'
+                : 'Unlock Hard Lockout Shield & Unlimited Accountability Contacts'}
+            </p>
+          </div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-amber-400" />
+      </div>
+
       {/* Daily Limits Section */}
       <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 space-y-5 shadow-2xl">
         <div className="flex items-center space-x-2 text-[#FA114F]">
           <Sliders className="w-5 h-5" />
-          <span className="text-xs font-bold uppercase tracking-wider">Daily Quota Targets</span>
+          <span className="text-xs font-bold uppercase tracking-wider">Dual-Limit State Machine</span>
         </div>
 
         {/* Reel Count Limit Slider */}
@@ -65,6 +117,11 @@ export const SettingsView: React.FC = () => {
             onChange={(e) => updateSettings({ maxDailyMinutes: parseInt(e.target.value) })}
             className="w-full accent-[#00F0FF] h-2 bg-zinc-800 rounded-lg cursor-pointer"
           />
+          <div className="flex justify-between text-[10px] text-zinc-500 font-medium">
+            <span>10m High Focus</span>
+            <span>30m Moderate</span>
+            <span>90m Leisure</span>
+          </div>
         </div>
       </div>
 
@@ -110,7 +167,12 @@ export const SettingsView: React.FC = () => {
             className="w-full p-3.5 rounded-2xl bg-zinc-900 border border-white/[0.06] flex items-center justify-between text-left hover:border-white/20 transition-all"
           >
             <div>
-              <div className="font-semibold text-white">1. Display Over Other Apps</div>
+              <div className="font-semibold text-white flex items-center space-x-1.5">
+                <span>1. Display Over Other Apps</span>
+                {nativeStats?.hasOverlayPermission && (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#30D158]" />
+                )}
+              </div>
               <div className="text-[11px] text-zinc-400 mt-0.5">Allows corner pill to float over Instagram & YouTube</div>
             </div>
             <ChevronRight className="w-4 h-4 text-zinc-500" />
@@ -121,7 +183,12 @@ export const SettingsView: React.FC = () => {
             className="w-full p-3.5 rounded-2xl bg-zinc-900 border border-white/[0.06] flex items-center justify-between text-left hover:border-white/20 transition-all"
           >
             <div>
-              <div className="font-semibold text-white">2. Reel Accessibility Tracking</div>
+              <div className="font-semibold text-white flex items-center space-x-1.5">
+                <span>2. Reel Accessibility Tracking</span>
+                {nativeStats?.hasAccessibilityPermission && (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#30D158]" />
+                )}
+              </div>
               <div className="text-[11px] text-zinc-400 mt-0.5">Counts real Instagram & YouTube swipes automatically</div>
             </div>
             <ChevronRight className="w-4 h-4 text-zinc-500" />
@@ -133,11 +200,30 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Replay Onboarding Guide */}
+      {onOpenOnboarding && (
+        <div
+          onClick={onOpenOnboarding}
+          className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-5 flex items-center justify-between cursor-pointer hover:border-white/20 transition-all shadow-xl"
+        >
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-300">
+              <HelpCircle className="w-5 h-5 text-[#00F0FF]" />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-white">Replay Onboarding Guide</span>
+              <p className="text-xs text-zinc-400 mt-0.5">Review the cognitive science and setup walkthrough</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        </div>
+      )}
+
       {/* Reset Session Data */}
       <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 flex items-center justify-between shadow-2xl">
         <div className="space-y-0.5">
-          <span className="text-sm font-bold text-white">Reset Today's Reel Counters</span>
-          <p className="text-xs text-zinc-400">Clear today's {events.length} recorded reel views.</p>
+          <span className="text-sm font-bold text-white">Reset Today's Counters</span>
+          <p className="text-xs text-zinc-400">Clear today's {totalReels} recorded reel views.</p>
         </div>
         <button
           onClick={resetToday}

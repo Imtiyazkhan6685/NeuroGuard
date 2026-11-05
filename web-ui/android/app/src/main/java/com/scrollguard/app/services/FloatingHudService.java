@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -22,6 +23,7 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.core.app.NotificationCompat;
+import com.scrollguard.app.MainActivity;
 import com.scrollguard.app.R;
 
 public class FloatingHudService extends Service {
@@ -61,6 +63,7 @@ public class FloatingHudService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        AttentionSpanEngine.init(this);
         startForegroundServiceNotification();
         windowManager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
     }
@@ -79,8 +82,8 @@ public class FloatingHudService extends Service {
         }
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("NeuroGuard Active")
-            .setContentText("Monitoring doomscrolling & attention span")
+            .setContentTitle("NeuroGuard Protection Active")
+            .setContentText("Monitoring dopamine loops & screen focus")
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build();
@@ -110,7 +113,10 @@ public class FloatingHudService extends Service {
 
     @SuppressLint("ClickableViewAccessibility")
     private void showOverlay() {
-        if (isHudAttached || hudView != null) return;
+        if (isHudAttached || hudView != null) {
+            updateOverlayUi();
+            return;
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
             Log.w("FloatingHudService", "Overlay permission not granted. Cannot show HUD.");
             return;
@@ -129,8 +135,8 @@ public class FloatingHudService extends Service {
         );
 
         params.gravity = Gravity.TOP | Gravity.START;
-        params.x = 40;
-        params.y = 200;
+        params.x = 30;
+        params.y = 220;
 
         LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         hudView = inflater.inflate(R.layout.layout_floating_hud, null);
@@ -141,14 +147,12 @@ public class FloatingHudService extends Service {
         statusIndicator = hudView.findViewById(R.id.hudStatusIndicator);
         ImageView btnCollapse = hudView.findViewById(R.id.btnCollapse);
 
-        if (btnCollapse != null) {
-            btnCollapse.setOnClickListener(v -> hideOverlay());
-        }
-
-        // Draggable touch listener
+        // Draggable touch listener with tap-to-open and edge-snapping
         hudView.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY;
             private float initialTouchX, initialTouchY;
+            private boolean isDragging = false;
+            private static final int CLICK_THRESHOLD_PX = 15;
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -158,12 +162,41 @@ public class FloatingHudService extends Service {
                         initialY = params.y;
                         initialTouchX = event.getRawX();
                         initialTouchY = event.getRawY();
+                        isDragging = false;
                         return true;
+
                     case MotionEvent.ACTION_MOVE:
-                        params.x = initialX + (int) (event.getRawX() - initialTouchX);
-                        params.y = initialY + (int) (event.getRawY() - initialTouchY);
-                        if (windowManager != null && hudView != null) {
-                            windowManager.updateViewLayout(hudView, params);
+                        float dx = event.getRawX() - initialTouchX;
+                        float dy = event.getRawY() - initialTouchY;
+                        if (Math.hypot(dx, dy) > CLICK_THRESHOLD_PX) {
+                            isDragging = true;
+                            params.x = initialX + (int) dx;
+                            params.y = initialY + (int) dy;
+                            if (windowManager != null && hudView != null) {
+                                windowManager.updateViewLayout(hudView, params);
+                            }
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                        if (!isDragging) {
+                            // Check if collapse button was tapped
+                            if (btnCollapse != null) {
+                                int[] btnLoc = new int[2];
+                                btnCollapse.getLocationOnScreen(btnLoc);
+                                float touchX = event.getRawX();
+                                float touchY = event.getRawY();
+                                if (touchX >= btnLoc[0] && touchX <= btnLoc[0] + btnCollapse.getWidth() &&
+                                    touchY >= btnLoc[1] && touchY <= btnLoc[1] + btnCollapse.getHeight()) {
+                                    hideOverlay();
+                                    return true;
+                                }
+                            }
+                            // Tap on pill body opens NeuroGuard App Dashboard
+                            launchMainActivity();
+                        } else {
+                            // Snap to nearest screen edge (left or right)
+                            snapToNearestEdge(params);
                         }
                         return true;
                 }
@@ -179,6 +212,37 @@ public class FloatingHudService extends Service {
             updateOverlayUi();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void snapToNearestEdge(WindowManager.LayoutParams params) {
+        if (windowManager == null || hudView == null) return;
+        try {
+            DisplayMetrics metrics = getResources().getDisplayMetrics();
+            int screenWidth = metrics.widthPixels;
+            int hudWidth = hudView.getWidth();
+            if (hudWidth <= 0) hudWidth = 320;
+
+            int centerX = params.x + (hudWidth / 2);
+            if (centerX < screenWidth / 2) {
+                params.x = 24; // Snap to left margin
+            } else {
+                params.x = screenWidth - hudWidth - 24; // Snap to right margin
+            }
+
+            // Keep Y within screen bounds
+            params.y = Math.max(100, Math.min(params.y, metrics.heightPixels - 250));
+            windowManager.updateViewLayout(hudView, params);
+        } catch (Exception ignored) {}
+    }
+
+    private void launchMainActivity() {
+        try {
+            Intent appIntent = new Intent(this, MainActivity.class);
+            appIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(appIntent);
+        } catch (Exception e) {
+            Log.e("FloatingHudService", "Failed to launch main activity: " + e.getMessage());
         }
     }
 

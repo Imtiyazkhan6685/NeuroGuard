@@ -12,7 +12,7 @@ public class ReelAccessibilityService extends AccessibilityService {
     private static final String TAG = "ReelAccessibilitySvc";
     private static final String PKG_INSTAGRAM = "com.instagram.android";
     private static final String PKG_YOUTUBE = "com.google.android.youtube";
-    private static final long SCROLL_DEBOUNCE_MS = 1000L;
+    private static final long SCROLL_DEBOUNCE_MS = 800L;
 
     private AccountabilityManager accountabilityManager;
     private long lastScrollTimestamp = 0L;
@@ -21,8 +21,9 @@ public class ReelAccessibilityService extends AccessibilityService {
     @Override
     public void onCreate() {
         super.onCreate();
+        AttentionSpanEngine.init(this);
         accountabilityManager = new AccountabilityManager(this);
-        Log.i(TAG, "ReelAccessibilityService created");
+        Log.i(TAG, "ReelAccessibilityService initialized with persistent storage");
     }
 
     private void launchHud(String action) {
@@ -49,9 +50,9 @@ public class ReelAccessibilityService extends AccessibilityService {
             case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
                 handleWindowStateChanged(packageName);
                 break;
+
             case AccessibilityEvent.TYPE_VIEW_SCROLLED:
-            case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
-                handlePotentialScroll(packageName, event);
+                handleRealScroll(packageName, event);
                 break;
         }
     }
@@ -69,11 +70,10 @@ public class ReelAccessibilityService extends AccessibilityService {
         } else if (!isTarget && isTargetAppInForeground) {
             isTargetAppInForeground = false;
             Log.d(TAG, "Exited target app. Floating HUD remains accessible in corner.");
-            // Keep HUD mounted in corner even when switching apps/closing as requested
         }
     }
 
-    private void handlePotentialScroll(String packageName, AccessibilityEvent event) {
+    private void handleRealScroll(String packageName, AccessibilityEvent event) {
         if (!PKG_INSTAGRAM.equals(packageName) && !PKG_YOUTUBE.equals(packageName)) return;
 
         long now = SystemClock.uptimeMillis();
@@ -81,11 +81,11 @@ public class ReelAccessibilityService extends AccessibilityService {
         lastScrollTimestamp = now;
 
         String platform = PKG_INSTAGRAM.equals(packageName) ? "Instagram Reels" : "YouTube Shorts";
-        Log.i(TAG, "Reel swipe/scroll event detected on " + platform);
+        Log.i(TAG, "Real swipe detected on " + platform);
 
-        AttentionSpanEngine.recordReelSwipe(platform);
+        AttentionSpanEngine.recordReelSwipe(platform, this);
 
-        // Update HUD
+        // Update HUD display
         launchHud(FloatingHudService.ACTION_UPDATE_COUNT);
 
         // Check if daily limit reached and trigger automated alerts to selected parents/friends
@@ -102,6 +102,6 @@ public class ReelAccessibilityService extends AccessibilityService {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        launchHud(FloatingHudService.ACTION_HIDE);
+        Log.i(TAG, "Accessibility Service destroyed");
     }
 }

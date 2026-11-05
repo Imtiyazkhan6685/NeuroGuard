@@ -1,19 +1,31 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ReelEvent, AccountabilityPartner, DispatchedAlert, AppSettings, NativeStats } from '../types';
-import { fetchNativeStats, savePartnersToNative, recordNativeSwipe, isNativeAndroid, NativeScrollGuard } from '../lib/nativeBridge';
+import {
+  fetchNativeStats,
+  savePartnersToNative,
+  recordNativeSwipe,
+  resetNativeToday,
+  isNativeAndroid,
+  NativeScrollGuard
+} from '../lib/nativeBridge';
 
 interface AppContextType {
   events: ReelEvent[];
   partners: AccountabilityPartner[];
-  partner: AccountabilityPartner; // Primary selected partner
+  partner: AccountabilityPartner;
   selectedPartners: AccountabilityPartner[];
   settings: AppSettings;
   alerts: DispatchedAlert[];
   nativeStats: NativeStats | null;
   currentReelIndex: number;
   isSimulatorActive: boolean;
+  totalReels: number;
   instagramCount: number;
   youtubeCount: number;
+  totalMinutes: number;
+  streakDays: number;
+  isPro: boolean;
+  setIsPro: (pro: boolean) => void;
   addReelEvent: (event: ReelEvent) => void;
   addPartner: (partner: Omit<AccountabilityPartner, 'id'>) => void;
   removePartner: (id: string) => void;
@@ -28,23 +40,6 @@ interface AppContextType {
   syncNativeStats: () => Promise<void>;
 }
 
-const INITIAL_EVENTS: ReelEvent[] = [
-  { id: '1', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 2.5, dwellDurationMs: 3200, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: false, topic: 'Viral Dance Trend' },
-  { id: '2', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 2.4, dwellDurationMs: 1800, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: true, topic: 'Street Interview' },
-  { id: '3', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 2.3, dwellDurationMs: 8400, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: false, topic: 'Cooking Hack' },
-  { id: '4', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 2.2, dwellDurationMs: 2100, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: true, topic: 'Meme Compilation' },
-  { id: '5', platform: 'YouTube Shorts', timestamp: Date.now() - 3600000 * 1.8, dwellDurationMs: 42000, estimatedLengthMs: 60000, wasSkippedEarly: false, isMicroSkip: false, topic: 'Science Explained' },
-  { id: '6', platform: 'YouTube Shorts', timestamp: Date.now() - 3600000 * 1.7, dwellDurationMs: 4600, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: false, topic: 'Tech Review' },
-  { id: '7', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 1.1, dwellDurationMs: 1400, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: true, topic: 'Cat Video' },
-  { id: '8', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 1.0, dwellDurationMs: 6200, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: false, topic: 'Workout Routine' },
-  { id: '9', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 0.9, dwellDurationMs: 2900, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: true, topic: 'Standup Comedy Clip' },
-  { id: '10', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 0.8, dwellDurationMs: 15400, estimatedLengthMs: 60000, wasSkippedEarly: false, isMicroSkip: false, topic: 'Documentary Short' },
-  { id: '11', platform: 'YouTube Shorts', timestamp: Date.now() - 3600000 * 0.5, dwellDurationMs: 2200, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: true, topic: 'Gaming Stream highlight' },
-  { id: '12', platform: 'YouTube Shorts', timestamp: Date.now() - 3600000 * 0.4, dwellDurationMs: 5100, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: false, topic: 'History Trivia' },
-  { id: '13', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 0.2, dwellDurationMs: 3800, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: false, topic: 'Luxury Cars' },
-  { id: '14', platform: 'Instagram Reels', timestamp: Date.now() - 3600000 * 0.1, dwellDurationMs: 1900, estimatedLengthMs: 60000, wasSkippedEarly: true, isMicroSkip: true, topic: 'Celebrity Gossip' },
-];
-
 const INITIAL_PARTNERS: AccountabilityPartner[] = [
   {
     id: 'partner_1',
@@ -53,7 +48,7 @@ const INITIAL_PARTNERS: AccountabilityPartner[] = [
     role: 'Parent',
     relationshipTag: 'Mom',
     selected: true,
-    customTemplate: '🚨 NeuroGuard Alert: {user} just exceeded their daily limit of {limit} Reels ({watched} watched today). Please check in!'
+    customTemplate: '🚨 NeuroGuard Alert: {user} just reached their limit of {limit} Reels ({watched} watched today). Please check in!'
   },
   {
     id: 'partner_2',
@@ -62,7 +57,7 @@ const INITIAL_PARTNERS: AccountabilityPartner[] = [
     role: 'Best Friend',
     relationshipTag: 'Best Friend',
     selected: true,
-    customTemplate: '🚨 NeuroGuard Alert: Your friend reached their {limit} reel quota! Average focus: {avg_span}s ({boredom_pct}% boredom skips). Tell them to put their phone down!'
+    customTemplate: '🚨 NeuroGuard Alert: Your friend hit their {limit} reel quota! Average focus: {avg_span}s ({boredom_pct}% boredom skips). Tell them to put their phone down!'
   },
   {
     id: 'partner_3',
@@ -98,7 +93,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<ReelEvent[]>(() => {
     const saved = localStorage.getItem('neuroguard_events');
-    return saved ? JSON.parse(saved) : INITIAL_EVENTS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [partners, setPartners] = useState<AccountabilityPartner[]>(() => {
@@ -116,11 +111,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [isPro, setIsPro] = useState<boolean>(() => {
+    return localStorage.getItem('neuroguard_is_pro') === 'true';
+  });
+
   const [nativeStats, setNativeStats] = useState<NativeStats | null>(null);
   const [currentReelIndex, setCurrentReelIndex] = useState(0);
   const [isSimulatorActive, setIsSimulatorActive] = useState(false);
 
-  // Sync with native Android on launch and every 3 seconds
+  // Sync with native Android on launch and every 2.5 seconds
   const syncNativeStats = useCallback(async () => {
     const stats = await fetchNativeStats();
     if (stats) {
@@ -128,23 +127,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (stats.dailyLimit && stats.dailyLimit !== settings.dailyReelLimit) {
         setSettings((prev) => ({ ...prev, dailyReelLimit: stats.dailyLimit }));
       }
+      if (stats.maxDailyMinutes && stats.maxDailyMinutes !== settings.maxDailyMinutes) {
+        setSettings((prev) => ({ ...prev, maxDailyMinutes: stats.maxDailyMinutes || 30 }));
+      }
     }
-  }, [settings.dailyReelLimit]);
+  }, [settings.dailyReelLimit, settings.maxDailyMinutes]);
 
   useEffect(() => {
     syncNativeStats();
-    const interval = setInterval(syncNativeStats, 3000);
+    const interval = setInterval(syncNativeStats, 2500);
     return () => clearInterval(interval);
   }, [syncNativeStats]);
 
-  // Persist local state
+  // Persist state
   useEffect(() => {
     localStorage.setItem('neuroguard_events', JSON.stringify(events));
   }, [events]);
 
   useEffect(() => {
     localStorage.setItem('neuroguard_partners_list', JSON.stringify(partners));
-    // Also save to native Android shared prefs
     savePartnersToNative(JSON.stringify(partners));
   }, [partners]);
 
@@ -152,6 +153,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('neuroguard_settings', JSON.stringify(settings));
     if (isNativeAndroid()) {
       NativeScrollGuard.setDailyLimit({ limit: settings.dailyReelLimit }).catch(() => {});
+      NativeScrollGuard.setMaxDailyMinutes({ minutes: settings.maxDailyMinutes }).catch(() => {});
     }
   }, [settings]);
 
@@ -159,11 +161,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('neuroguard_alerts', JSON.stringify(alerts));
   }, [alerts]);
 
+  useEffect(() => {
+    localStorage.setItem('neuroguard_is_pro', isPro ? 'true' : 'false');
+  }, [isPro]);
+
   const selectedPartners = partners.filter((p) => p.selected);
   const partner = selectedPartners[0] || partners[0] || INITIAL_PARTNERS[0];
 
-  const instagramCount = events.filter((e) => e.platform === 'Instagram Reels').length;
-  const youtubeCount = events.filter((e) => e.platform === 'YouTube Shorts').length;
+  // Live unified calculations
+  const totalReels = (nativeStats && nativeStats.reelsWatched !== undefined && isNativeAndroid())
+    ? nativeStats.reelsWatched
+    : events.length;
+
+  const instagramCount = (nativeStats && nativeStats.instagramCount !== undefined && isNativeAndroid())
+    ? nativeStats.instagramCount
+    : events.filter((e) => e.platform === 'Instagram Reels').length;
+
+  const youtubeCount = (nativeStats && nativeStats.youtubeCount !== undefined && isNativeAndroid())
+    ? nativeStats.youtubeCount
+    : events.filter((e) => e.platform === 'YouTube Shorts').length;
+
+  const totalDwellMs = events.reduce((acc, curr) => acc + curr.dwellDurationMs, 0);
+  const totalMinutes = (nativeStats && nativeStats.totalMinutes !== undefined && isNativeAndroid())
+    ? nativeStats.totalMinutes
+    : Math.round(totalDwellMs / 60000);
+
+  const streakDays = (nativeStats && nativeStats.streakDays !== undefined && isNativeAndroid())
+    ? nativeStats.streakDays
+    : 3;
 
   const addReelEvent = (event: ReelEvent) => {
     setEvents((prev) => {
@@ -174,7 +199,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    // Sync simulated swipe to native Android if on device
     if (isNativeAndroid()) {
       recordNativeSwipe(event.platform);
     }
@@ -199,7 +223,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const template = p.customTemplate && p.customTemplate.trim() !== ''
         ? p.customTemplate
-        : `🚨 NeuroGuard Alert: Your partner hit their quota of ${currentSettings.dailyReelLimit} reels (${count} watched today: ${instagramCount} IG, ${youtubeCount} YT). Attention span: ${avgSpan}s (${boredomPct}% boredom). Please call them!`;
+        : `🚨 NeuroGuard Alert: Your partner reached their daily quota of ${currentSettings.dailyReelLimit} reels (${count} watched today: ${instagramCount} IG, ${youtubeCount} YT). Please call them!`;
 
       const messageText = template
         .replace('{user}', 'Your partner')
@@ -227,7 +251,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAlerts((prev) => [...newAlerts, ...prev]);
     }
 
-    // Trigger native SMS dispatch via Android SmsManager
     if (isNativeAndroid()) {
       try {
         await NativeScrollGuard.triggerTestAlert();
@@ -238,7 +261,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const triggerManualAlert = async () => {
-    await dispatchAlertsToAllSelected(events.length, selectedPartners, settings, events);
+    await dispatchAlertsToAllSelected(totalReels, selectedPartners, settings, events);
   };
 
   const addPartner = (newP: Omit<AccountabilityPartner, 'id'>) => {
@@ -283,6 +306,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetToday = () => {
     setEvents([]);
+    resetNativeToday();
   };
 
   return (
@@ -297,8 +321,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         nativeStats,
         currentReelIndex,
         isSimulatorActive,
+        totalReels,
         instagramCount,
         youtubeCount,
+        totalMinutes,
+        streakDays,
+        isPro,
+        setIsPro,
         addReelEvent,
         addPartner,
         removePartner,

@@ -51,6 +51,10 @@ export interface NativeStats {
   instagramCount: number;
   youtubeCount: number;
   dailyLimit: number;
+  totalMinutes?: number;
+  maxDailyMinutes?: number;
+  streakDays?: number;
+  history7Days?: string;
   avgAttentionSpan: number;
   boredomRate: number;
   microSkips: number;

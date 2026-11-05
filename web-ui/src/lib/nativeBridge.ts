@@ -10,6 +10,8 @@ interface ScrollGuardPluginInterface {
   getPartners(): Promise<{ partnersJson: string }>;
   triggerTestAlert(): Promise<void>;
   setDailyLimit(options: { limit: number }): Promise<void>;
+  setMaxDailyMinutes(options: { minutes: number }): Promise<void>;
+  resetToday(): Promise<void>;
   recordSimulatedSwipe(options: { platform: string }): Promise<void>;
   openSmsIntent(options: { phone: string; message: string }): Promise<void>;
   openWhatsAppIntent(options: { phone: string; message: string }): Promise<void>;
@@ -79,6 +81,19 @@ export const savePartnersToNative = async (partnersJson: string) => {
       return true;
     } catch (e) {
       console.error('Failed to save partners to native:', e);
+      return false;
+    }
+  }
+  return false;
+};
+
+export const resetNativeToday = async () => {
+  if (isNativeAndroid()) {
+    try {
+      await NativeScrollGuard.resetToday();
+      return true;
+    } catch (e) {
+      console.error('Failed to reset native today:', e);
       return false;
     }
   }

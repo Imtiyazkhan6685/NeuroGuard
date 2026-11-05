@@ -7,81 +7,89 @@ import {
   getAttentionDwellBuckets,
   getHourlyDoomscrollDistribution
 } from '../lib/attentionMath';
-import { BrainCircuit, TrendingDown, Hourglass, Sparkles, AlertCircle } from 'lucide-react';
+import { BrainCircuit, TrendingDown, Hourglass, Sparkles, AlertCircle, Zap } from 'lucide-react';
 
 export const AttentionAnalyticsView: React.FC = () => {
-  const { events } = useApp();
+  const { events, totalReels, nativeStats } = useApp();
 
-  const avgAttentionSec = calculateAverageAttentionSpan(events);
-  const boredomRate = calculateBoredomRate(events);
+  const avgAttentionSec = nativeStats?.avgAttentionSpan !== undefined
+    ? nativeStats.avgAttentionSpan.toFixed(1)
+    : calculateAverageAttentionSpan(events);
+
+  const boredomRate = nativeStats?.boredomRate !== undefined
+    ? Math.round(nativeStats.boredomRate)
+    : calculateBoredomRate(events);
+
   const retentionCurve = generateReelRetentionCurve(events);
   const dwellBuckets = getAttentionDwellBuckets(events);
   const hourlyData = getHourlyDoomscrollDistribution(events);
 
+  const numAvg = Number(avgAttentionSec);
+
   return (
-    <div className="space-y-6 pb-28">
+    <div className="space-y-6 pb-28 text-white select-none">
       {/* Title */}
       <div>
-        <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">Cognitive Diagnostics</span>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Attention Span & Boredom</h1>
+        <span className="text-[11px] font-bold text-zinc-500 tracking-widest uppercase">Cognitive Diagnostics</span>
+        <h1 className="text-3xl font-black text-white tracking-tight mt-0.5">Dopamine & Focus</h1>
         <p className="text-xs text-zinc-400 mt-1">
-          Detailed breakdown of how your brain gets bored on 1-minute reels and triggers compulsive skips.
+          Second-by-second analytics on how short-form video degrades attention spans.
         </p>
       </div>
 
       {/* Hero: Attention Span Half-Life */}
-      <div className="ios-glass rounded-3xl p-5 border border-white/10 space-y-4">
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 space-y-4 shadow-2xl">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-purple-400">
+          <div className="flex items-center space-x-2 text-[#A8FF00]">
             <BrainCircuit className="w-5 h-5" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Attention Half-Life</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Attention Half-Life</span>
           </div>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
-            {avgAttentionSec < 6 ? '⚡ Severe Dopamine Fatigue' : avgAttentionSec < 15 ? '⚠️ Shortened Span' : '✅ Focused'}
+          <span className="text-xs px-3 py-1 rounded-full bg-[#A8FF00]/15 text-[#A8FF00] font-bold border border-[#A8FF00]/30">
+            {numAvg < 6 ? '⚡ Severe Dopamine Fatigue' : numAvg < 15 ? '⚠️ Shortened Span' : '✅ Focused'}
           </span>
         </div>
 
         <div className="flex items-baseline space-x-2">
-          <span className="text-4xl font-extrabold text-white">{avgAttentionSec}s</span>
-          <span className="text-sm text-zinc-400">median before swiping away</span>
+          <span className="text-5xl font-black text-white tracking-tight">{avgAttentionSec}s</span>
+          <span className="text-xs font-semibold text-zinc-400">median before flicking away</span>
         </div>
 
         <p className="text-xs text-zinc-300 leading-relaxed">
-          On an average 60-second video, your brain stays engaged for <span className="font-semibold text-white">{avgAttentionSec} seconds</span> before dopamine decay triggers the impulse to flick to the next reel.
+          On an average 60-second video, your cognitive focus remains locked for <span className="font-bold text-[#A8FF00]">{avgAttentionSec} seconds</span> before dopamine decay triggers the impulse to swipe to the next reel.
         </p>
       </div>
 
       {/* 1-Minute Reel Retention & Drop-Off Curve */}
-      <div className="ios-glass-card rounded-3xl p-5 border border-white/10 space-y-4">
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 space-y-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-white">1-Minute Reel Drop-Off Curve</h2>
+            <h2 className="text-base font-bold text-white">60-Second Video Drop-Off Curve</h2>
             <p className="text-[11px] text-zinc-400">Where you get bored and swipe across a 60-second clip</p>
           </div>
-          <div className="p-2 rounded-xl bg-red-500/10 text-red-400">
-            <TrendingDown className="w-4 h-4" />
+          <div className="p-2.5 rounded-2xl bg-red-500/10 text-[#FA114F]">
+            <TrendingDown className="w-5 h-5" />
           </div>
         </div>
 
         {/* Visual Retention Decay Chart */}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-3 pt-2">
           {retentionCurve.map((point) => (
             <div key={point.second} className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-zinc-400 font-mono w-14">{point.second}s mark</span>
+                <span className="text-zinc-400 font-mono w-16">{point.second}s mark</span>
                 <span className="text-[11px] text-zinc-500">{point.label}</span>
-                <span className={`font-semibold ${point.retentionPct < 20 ? 'text-red-400' : point.retentionPct < 50 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                <span className={`font-bold ${point.retentionPct < 20 ? 'text-[#FA114F]' : point.retentionPct < 50 ? 'text-amber-400' : 'text-[#30D158]'}`}>
                   {point.retentionPct}% stay
                 </span>
               </div>
-              <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${
                     point.retentionPct < 20
-                      ? 'bg-gradient-to-r from-red-600 to-rose-400'
+                      ? 'bg-[#FA114F]'
                       : point.retentionPct < 50
-                      ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
-                      : 'bg-gradient-to-r from-purple-500 to-indigo-400'
+                      ? 'bg-amber-400'
+                      : 'bg-[#30D158]'
                   }`}
                   style={{ width: `${point.retentionPct}%` }}
                 />
@@ -90,32 +98,32 @@ export const AttentionAnalyticsView: React.FC = () => {
           ))}
         </div>
 
-        <div className="p-3 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-start space-x-3 text-xs text-zinc-300">
+        <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/[0.04] flex items-start space-x-3 text-xs text-zinc-300">
           <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
           <p className="leading-snug">
-            <span className="font-semibold text-white">Boredom Cliff (0-8 seconds):</span> 78% of your skips occur in the first 8 seconds. This indicates compulsive dopamine-hunting rather than intentional content consumption.
+            <span className="font-bold text-white">Boredom Cliff (0-8 seconds):</span> Over 70% of skips occur in the first 8 seconds. This indicates compulsive dopamine-hunting rather than intentional content consumption.
           </p>
         </div>
       </div>
 
       {/* Dwell Time Distribution Buckets */}
-      <div className="ios-glass-card rounded-3xl p-5 border border-white/10 space-y-4">
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 space-y-4 shadow-2xl">
         <h2 className="text-base font-bold text-white">Attention Buckets Breakdown</h2>
         <p className="text-[11px] text-zinc-400">Psychological categorization of your swipe behavior</p>
 
         <div className="space-y-3">
           {Object.entries(dwellBuckets).map(([key, bucket]) => {
-            const total = events.length || 1;
+            const total = totalReels || 1;
             const pct = Math.round((bucket.count / total) * 100);
 
             return (
-              <div key={key} className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5">
+              <div key={key} className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/[0.04]">
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-semibold text-white">{bucket.label}</span>
-                  <span className="text-zinc-400">{bucket.count} reels ({pct}%)</span>
+                  <span className="font-bold text-white">{bucket.label}</span>
+                  <span className="text-zinc-400 font-mono">{bucket.count} reels ({pct}%)</span>
                 </div>
                 <p className="text-[11px] text-zinc-400 mb-2">{bucket.desc}</p>
-                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{ width: `${pct}%`, backgroundColor: bucket.color }}
@@ -127,18 +135,18 @@ export const AttentionAnalyticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Hourly Doomscroll Heatmap: When they watch how much */}
-      <div className="ios-glass-card rounded-3xl p-5 border border-white/10 space-y-4">
+      {/* Hourly Doomscroll Heatmap */}
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 space-y-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-white">Peak Doomscrolling Hours</h2>
             <p className="text-[11px] text-zinc-400">When you watch the most reels throughout the 24-hour day</p>
           </div>
-          <Hourglass className="w-4 h-4 text-purple-400" />
+          <Hourglass className="w-5 h-5 text-[#00F0FF]" />
         </div>
 
         {/* 24-Hour Bar Graph */}
-        <div className="flex items-end justify-between h-28 pt-4 pb-1 px-1 bg-zinc-950/50 rounded-2xl border border-white/5">
+        <div className="flex items-end justify-between h-28 pt-4 pb-1 px-1 bg-black/40 rounded-2xl border border-white/[0.04]">
           {hourlyData.map((count, hour) => {
             const max = Math.max(...hourlyData, 1);
             const heightPct = Math.round((count / max) * 100);
@@ -150,8 +158,8 @@ export const AttentionAnalyticsView: React.FC = () => {
                   className={`w-full rounded-t transition-all duration-300 ${
                     count > 0
                       ? isNight
-                        ? 'bg-rose-500 group-hover:bg-rose-400'
-                        : 'bg-purple-500 group-hover:bg-purple-400'
+                        ? 'bg-[#FA114F] shadow-[0_0_8px_#FA114F]'
+                        : 'bg-[#A8FF00]'
                       : 'bg-zinc-800/40'
                   }`}
                   style={{ height: `${Math.max(8, heightPct)}%` }}
@@ -168,11 +176,11 @@ export const AttentionAnalyticsView: React.FC = () => {
 
         <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-1">
           <div className="flex items-center space-x-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm bg-purple-500" />
-            <span>Daytime scrolling</span>
+            <div className="w-2.5 h-2.5 rounded-sm bg-[#A8FF00]" />
+            <span>Daytime focus</span>
           </div>
           <div className="flex items-center space-x-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm bg-rose-500" />
+            <div className="w-2.5 h-2.5 rounded-sm bg-[#FA114F]" />
             <span>Late night (high cognitive tax)</span>
           </div>
         </div>

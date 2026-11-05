@@ -11,44 +11,56 @@ import {
   ShieldCheck,
   ShieldAlert,
   Smartphone,
+  Crown,
   Eye,
-  Check
+  Check,
+  Sparkles
 } from 'lucide-react';
 
 interface DashboardViewProps {
   onOpenAnalytics: () => void;
   onOpenPartner: () => void;
+  onOpenPro?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAnalytics,
-  onOpenPartner
+  onOpenPartner,
+  onOpenPro
 }) => {
   const {
     events,
+    totalReels,
+    instagramCount,
+    youtubeCount,
+    totalMinutes,
+    streakDays,
     selectedPartners,
     settings,
-    instagramCount,
-    youtubeCount
+    nativeStats,
+    isPro
   } = useApp();
 
   const [isWidgetActive, setIsWidgetActive] = useState(true);
 
-  const reelsCount = events.length;
-  const limit = settings.dailyReelLimit;
+  const reelsCount = totalReels;
+  const limit = settings.dailyReelLimit || 20;
   const quotaPct = Math.min(100, Math.round((reelsCount / (limit || 1)) * 100));
   const isExceeded = reelsCount >= limit;
 
-  // Dwell calculations
-  const totalDwellMs = events.reduce((acc, curr) => acc + curr.dwellDurationMs, 0);
-  const avgAttentionSec = events.length > 0 ? (totalDwellMs / events.length / 1000).toFixed(1) : '12.4';
-  const totalMinutes = Math.round(totalDwellMs / 60000);
+  // Minutes calculations
   const maxMinutes = settings.maxDailyMinutes || 30;
   const minutesPct = Math.min(100, Math.round((totalMinutes / maxMinutes) * 100));
 
-  // Focus score (percentage of reels watched longer than 10 seconds)
+  // Focus score & Attention span
+  const avgAttentionSec = nativeStats?.avgAttentionSpan !== undefined
+    ? nativeStats.avgAttentionSpan.toFixed(1)
+    : events.length > 0
+    ? (events.reduce((a, c) => a + c.dwellDurationMs, 0) / events.length / 1000).toFixed(1)
+    : '8.4';
+
   const mindfulReels = events.filter((e) => !e.wasSkippedEarly).length;
-  const focusPct = events.length > 0 ? Math.round((mindfulReels / events.length) * 100) : 65;
+  const focusPct = events.length > 0 ? Math.round((mindfulReels / events.length) * 100) : 68;
 
   // Apple Fitness Tri-Ring geometry
   const rOuter = 74;   // Coral Red (Reels Quota)
@@ -75,9 +87,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     day: 'numeric'
   }).toUpperCase();
 
+  // 7-day consistency strip data
+  const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const currentDayIdx = (new Date().getDay() + 6) % 7; // Monday = 0
+
   return (
     <div className="space-y-6 pb-28 text-white select-none">
-      {/* Apple Fitness Top Date Header */}
+      {/* Top Date Header */}
       <div className="flex items-end justify-between pt-1 px-1">
         <div>
           <span className="text-[11px] font-bold text-zinc-500 tracking-widest uppercase">
@@ -87,14 +103,58 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             Activity
           </h1>
         </div>
-        <div className="w-9 h-9 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-xs text-zinc-300">
-          NG
+        <div
+          onClick={onOpenPro}
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-zinc-900 border border-white/10 cursor-pointer hover:border-amber-500/40 transition-all"
+        >
+          <Crown className={`w-3.5 h-3.5 ${isPro ? 'text-amber-400' : 'text-zinc-500'}`} />
+          <span className="text-xs font-bold text-zinc-300">
+            {isPro ? 'Ultra Active' : 'Upgrade'}
+          </span>
         </div>
       </div>
 
+      {/* 7-Day Apple Fitness Weekly Consistency Strip */}
+      <div className="rounded-[28px] bg-[#121214] border border-white/[0.08] p-4 flex items-center justify-between">
+        {daysOfWeek.map((day, idx) => {
+          const isToday = idx === currentDayIdx;
+          const isPast = idx < currentDayIdx;
+          const closed = isPast || (isToday && !isExceeded);
+
+          return (
+            <div key={idx} className="flex flex-col items-center space-y-1.5">
+              <span className={`text-[10px] font-bold ${isToday ? 'text-white' : 'text-zinc-500'}`}>
+                {day}
+              </span>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
+                  isToday
+                    ? 'border-[#FA114F] shadow-[0_0_8px_#FA114F]'
+                    : closed
+                    ? 'border-[#30D158] bg-[#30D158]/10'
+                    : 'border-zinc-800 bg-zinc-900/50'
+                }`}
+              >
+                {closed ? (
+                  <Check className="w-3.5 h-3.5 text-[#30D158] stroke-[3]" />
+                ) : (
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Main Apple Fitness Tri-Ring Card */}
-      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 shadow-2xl">
-        <div className="flex items-center justify-between">
+      <div className="rounded-[32px] bg-[#121214] border border-white/[0.08] p-6 shadow-2xl relative overflow-hidden">
+        {isExceeded && (
+          <div className="absolute top-0 left-0 right-0 bg-[#FA114F] text-white text-[11px] font-black uppercase tracking-wider py-1 px-4 text-center">
+            🚨 Daily Quota Exceeded • Accountability Alert Dispatched
+          </div>
+        )}
+
+        <div className={`flex items-center justify-between ${isExceeded ? 'pt-4' : ''}`}>
           {/* Ring Metrics Legend */}
           <div className="space-y-4 max-w-[55%]">
             {/* Ring 1: Coral Red (Reels Quota) */}
@@ -186,10 +246,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between text-xs">
           <span className="text-zinc-400 font-medium">
             {isExceeded
-              ? '🚨 Daily quota exceeded'
+              ? '🚨 Quota exceeded! Dispatched alert to contacts.'
               : `${Math.max(0, limit - reelsCount)} reels remaining until alert`}
           </span>
-          <span className={`font-bold ${isExceeded ? 'text-[#FA114F]' : 'text-[#A8FF00]'}`}>
+          <span className={`font-bold ${isExceeded ? 'text-[#FA114F]' : 'text-[#30D158]'}`}>
             {quotaPct}% of limit
           </span>
         </div>
@@ -198,7 +258,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Real Apps Detection Cards: Instagram & YouTube */}
       <div className="space-y-2">
         <span className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase px-1">
-          Real Apps Live Tracking
+          Hardware Background Detection
         </span>
         <div className="grid grid-cols-2 gap-3">
           {/* Card 1: Real Instagram Reels */}
@@ -227,7 +287,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Floating Corner Widget Switch (Requested: small pop up in corner when app is closed) */}
+      {/* Persistent Floating Corner Widget Switch */}
       <div className="rounded-[28px] bg-[#121214] border border-white/[0.08] p-5 flex items-center justify-between shadow-xl">
         <div className="space-y-1 max-w-[75%]">
           <div className="flex items-center space-x-2">
@@ -237,11 +297,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            Stays visible in the corner of your screen even when NeuroGuard is closed to count reels live.
+            Stays parked on the screen even when NeuroGuard is closed. Counts reels live.
           </p>
         </div>
 
-        {/* Apple iOS Switch */}
         <button
           onClick={handleToggleWidget}
           className={`w-13 h-7 rounded-full p-1 transition-colors duration-300 flex items-center ${
@@ -252,7 +311,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </div>
 
-      {/* Accountability Contacts Row (Apple Fitness Sharing Style) */}
+      {/* Accountability Contacts Summary Row */}
       <div
         onClick={onOpenPartner}
         className="rounded-[28px] bg-[#121214] border border-white/[0.08] p-5 cursor-pointer hover:border-white/20 transition-all flex items-center justify-between"
@@ -272,7 +331,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="text-[11px] text-zinc-400 mt-0.5">
               {selectedPartners.length > 0
-                ? `Will receive automated alert at ${limit} reels`
+                ? `Will receive automated SMS alert at ${limit} reels`
                 : 'Tap to select parents or friends'}
             </div>
           </div>
@@ -297,7 +356,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {avgAttentionSec}s Attention Velocity
             </div>
             <div className="text-[11px] text-zinc-400 mt-0.5">
-              Second-by-second drop-off curve & boredom analytics
+              60s drop-off curve & compulsive micro-skip analytics
             </div>
           </div>
         </div>
