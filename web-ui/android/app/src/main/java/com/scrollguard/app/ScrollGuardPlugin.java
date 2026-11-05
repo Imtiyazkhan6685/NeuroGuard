@@ -83,21 +83,27 @@ public class ScrollGuardPlugin extends Plugin {
 
     @PluginMethod
     public void toggleFloatingHud(PluginCall call) {
-        Boolean show = call.getBoolean("show", true);
+        Boolean show = call.getBoolean("show");
+        boolean shouldShow = (show != null) ? show : true;
         Intent intent = new Intent(getContext(), FloatingHudService.class);
-        intent.setAction(show ? FloatingHudService.ACTION_SHOW : FloatingHudService.ACTION_HIDE);
+        intent.setAction(shouldShow ? FloatingHudService.ACTION_SHOW : FloatingHudService.ACTION_HIDE);
         getContext().startService(intent);
         call.resolve();
     }
 
     @PluginMethod
     public void saveAccountabilityPartner(PluginCall call) {
-        String name = call.getString("name", "Mom");
-        String phone = call.getString("phone", "");
-        String role = call.getString("role", "Parent");
-        String customMsg = call.getString("customTemplate", "");
+        String name = call.getString("name");
+        String phone = call.getString("phone");
+        String role = call.getString("role");
+        String customMsg = call.getString("customTemplate");
 
-        accountabilityManager.savePartner(name, phone, role, customMsg);
+        accountabilityManager.savePartner(
+            name != null ? name : "Mom",
+            phone != null ? phone : "",
+            role != null ? role : "Parent",
+            customMsg != null ? customMsg : ""
+        );
         call.resolve();
     }
 
@@ -112,8 +118,8 @@ public class ScrollGuardPlugin extends Plugin {
 
     @PluginMethod
     public void setDailyLimit(PluginCall call) {
-        Integer limit = call.getInt("limit", 20);
-        AttentionSpanEngine.setDailyLimit(limit);
+        Integer limit = call.getInt("limit");
+        AttentionSpanEngine.setDailyLimit(limit != null ? limit : 20);
         call.resolve();
     }
 }
