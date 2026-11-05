@@ -52,6 +52,8 @@ public class ScrollGuardPlugin extends Plugin {
         ret.put("instagramCount", AttentionSpanEngine.getInstagramCount());
         ret.put("youtubeCount", AttentionSpanEngine.getYouTubeCount());
         ret.put("dailyLimit", AttentionSpanEngine.getDailyLimit());
+        ret.put("totalMinutes", AttentionSpanEngine.getTotalMinutesToday());
+        ret.put("maxDailyMinutes", AttentionSpanEngine.getMaxDailyMinutes());
         ret.put("avgAttentionSpan", AttentionSpanEngine.getAverageAttentionSpanSeconds());
         ret.put("boredomRate", AttentionSpanEngine.getBoredomRatePercentage());
         ret.put("microSkips", AttentionSpanEngine.getMicroSkipsCount());

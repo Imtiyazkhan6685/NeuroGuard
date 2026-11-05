@@ -87,11 +87,10 @@ public class AccountabilityManager {
     }
 
     public void checkAndTriggerAlertIfLimitReached() {
+        if (!AttentionSpanEngine.isQuotaExceeded()) return;
+
         int watched = AttentionSpanEngine.getTotalReelsWatchedToday();
         int limit = AttentionSpanEngine.getDailyLimit();
-
-        if (watched < limit) return;
-
         long now = System.currentTimeMillis();
         long lastSent = prefs.getLong(KEY_LAST_SENT, 0L);
 

@@ -197,18 +197,20 @@ public class FloatingHudService extends Service {
     private void updateOverlayUi() {
         int watched = AttentionSpanEngine.getTotalReelsWatchedToday();
         int limit = AttentionSpanEngine.getDailyLimit();
+        int minutes = AttentionSpanEngine.getTotalMinutesToday();
+        float ratio = AttentionSpanEngine.getCombinedQuotaRatio();
 
         if (tvReelCount != null) {
-            tvReelCount.setText(watched + " / " + limit + " Reels");
+            tvReelCount.setText(String.format("%d/%d Reels • %dm", watched, limit, minutes));
         }
 
         if (statusIndicator != null) {
-            if (watched >= limit) {
-                statusIndicator.setBackgroundColor(Color.parseColor("#FF453A")); // Red
-            } else if ((float) watched / limit >= 0.75f) {
-                statusIndicator.setBackgroundColor(Color.parseColor("#FF9F0A")); // Amber
+            if (ratio >= 1.0f) {
+                statusIndicator.setBackgroundColor(Color.parseColor("#FF453A")); // Red (Exceeded)
+            } else if (ratio >= 0.75f) {
+                statusIndicator.setBackgroundColor(Color.parseColor("#FF9F0A")); // Amber (Warning)
             } else {
-                statusIndicator.setBackgroundColor(Color.parseColor("#30D158")); // Green
+                statusIndicator.setBackgroundColor(Color.parseColor("#30D158")); // Green (Safe)
             }
         }
     }

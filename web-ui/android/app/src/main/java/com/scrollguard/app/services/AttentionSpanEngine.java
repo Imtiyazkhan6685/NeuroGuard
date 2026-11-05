@@ -34,6 +34,7 @@ public class AttentionSpanEngine {
     private static final List<ReelEvent> sessionEvents = Collections.synchronizedList(new ArrayList<>());
     private static long currentReelStartTimeMs = 0L;
     private static int dailyLimit = 20;
+    private static int maxDailyMinutes = 30;
 
     public static void startReelView() {
         currentReelStartTimeMs = System.currentTimeMillis();
@@ -79,6 +80,34 @@ public class AttentionSpanEngine {
 
     public static void setDailyLimit(int limit) {
         dailyLimit = limit;
+    }
+
+    public static int getMaxDailyMinutes() {
+        return maxDailyMinutes;
+    }
+
+    public static void setMaxDailyMinutes(int minutes) {
+        maxDailyMinutes = minutes;
+    }
+
+    public static int getTotalMinutesToday() {
+        long totalDwellMs = 0;
+        synchronized (sessionEvents) {
+            for (ReelEvent e : sessionEvents) {
+                totalDwellMs += e.dwellDurationMs;
+            }
+        }
+        return (int) (totalDwellMs / 60000L);
+    }
+
+    public static float getCombinedQuotaRatio() {
+        float reelRatio = (float) getTotalReelsWatchedToday() / (float) (dailyLimit > 0 ? dailyLimit : 20);
+        float timeRatio = (maxDailyMinutes > 0) ? ((float) getTotalMinutesToday() / (float) maxDailyMinutes) : 0f;
+        return Math.max(reelRatio, timeRatio);
+    }
+
+    public static boolean isQuotaExceeded() {
+        return getCombinedQuotaRatio() >= 1.0f;
     }
 
     public static float getAverageAttentionSpanSeconds() {
