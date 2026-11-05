@@ -29,15 +29,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Web & Capacitor Dependencies
+      - name: Install Dependencies
         run: |
           cd web-ui
           npm install --legacy-peer-deps
-          npm run build
-          npx cap sync android --no-build
-        env:
-          CAPACITOR_TELEMETRY: 'false'
-          CI: 'true'
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x web-ui/android/gradlew
