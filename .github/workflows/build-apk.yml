@@ -46,19 +46,14 @@ jobs:
       - name: Grant Execute Permission to Gradlew
         run: chmod +x web-ui/android/gradlew
 
-      - name: Build Android Release & Debug APKs
+      - name: Build Android APK
         run: |
           cd web-ui/android
-          for i in 1 2 3; do
-            ./gradlew assembleRelease assembleDebug --stacktrace && break || sleep 8
-          done
+          ./gradlew assembleDebug --stacktrace
 
       - name: Locate & Copy APK
         run: |
-          find web-ui/android/app/build/outputs/apk -name "*release*.apk" -exec cp {} NeuroGuard.apk \;
-          if [ ! -f NeuroGuard.apk ]; then
-            find web-ui/android/app/build/outputs/apk -name "*.apk" -exec cp {} NeuroGuard.apk \;
-          fi
+          find web-ui/android/app/build/outputs/apk -name "*.apk" -exec cp {} NeuroGuard.apk \;
           ls -lh NeuroGuard.apk
 
       - name: Upload APK Artifact
@@ -79,7 +74,7 @@ jobs:
             ## 📱 NeuroGuard v1.0.1 Android Release
             
             ### Fixes & Enhancements:
-            - **Fixed "Package appears to be invalid"**: Re-aligned SDK targets (`targetSdkVersion 34`, `compileSdkVersion 35`) and embedded a permanent deterministic keystore so updates install seamlessly over existing installations.
+            - **Fixed "Package appears to be invalid"**: Re-aligned runtime targets to universal `targetSdkVersion 34` (Android 14) with `minSdkVersion 24`, and embedded a permanent deterministic keystore so updates install cleanly over previous installs.
             - **Updated Version**: Incremented to `versionCode 2`, `versionName 1.0.1`.
             - **Floating Corner Widget**: Real Instagram & YouTube Shorts tracking with edge-snapping and tap-to-dashboard.
             - **100% Play Protect Safe**: Zero sensitive SMS daemon permissions.
