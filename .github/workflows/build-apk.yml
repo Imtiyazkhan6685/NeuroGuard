@@ -5,7 +5,10 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch: # Allows manual one-click build from GitHub web UI
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -41,9 +44,33 @@ jobs:
           cd web-ui/android
           ./gradlew assembleDebug --stacktrace
 
+      - name: Copy & Rename APK
+        run: |
+          cp web-ui/android/app/build/outputs/apk/debug/app-debug.apk NeuroGuard.apk
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: NeuroGuard-Debug-APK
-          path: web-ui/android/app/build/outputs/apk/debug/app-debug.apk
+          path: NeuroGuard.apk
           retention-days: 14
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: v1.0.0
+          name: NeuroGuard v1.0.0 (Android APK)
+          body: |
+            ## 📱 NeuroGuard Android Release
+            
+            Download `NeuroGuard.apk` directly on your Android phone to install!
+            
+            ### Features:
+            - **Floating Hover HUD** over Instagram Reels & YouTube Shorts (`SYSTEM_ALERT_WINDOW`).
+            - **Live Dwell Stopwatch** and attention span decay detection (`AccessibilityService`).
+            - **Automated Accountability Alert** to Parents / Best Friend when daily limit is reached.
+            - **Boredom & Attention Span Drop-Off Analytics**.
+          files: NeuroGuard.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
