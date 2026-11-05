@@ -24,24 +24,38 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install Web & Capacitor Dependencies
+      - name: Install Node Dependencies
+        working-directory: web-ui
         run: |
-          cd web-ui
-          npm install
+          npm install --legacy-peer-deps
+
+      - name: Build Web Application
+        working-directory: web-ui
+        run: |
           npm run build
+
+      - name: Sync Capacitor Android
+        working-directory: web-ui
+        env:
+          CAPACITOR_TELEMETRY: 'false'
+          CI: 'true'
+        run: |
           npx cap sync android
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x web-ui/android/gradlew
 
       - name: Build Android Debug APK
+        working-directory: web-ui/android
         run: |
-          cd web-ui/android
           ./gradlew assembleDebug --stacktrace
 
       - name: Copy & Rename APK
