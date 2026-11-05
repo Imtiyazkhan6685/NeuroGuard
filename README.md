@@ -1,13 +1,13 @@
 # NeuroGuard (ScrollZero) 🛡️📱
 
 > **Break the Short-Form Video Dopamine Loop**  
-> A production-ready Android application with a **Floating Hover HUD**, **Cognitive Attention Span & Boredom Analytics**, and **Automated Parent/Friend Accountability SMS Alerts** when daily reel quotas are reached.
+> An Apple Fitness-grade Android application featuring a **Persistent Corner Floating HUD Widget**, **Dual-Limit State Machine (Reels vs. Active Minutes)**, and **Multi-Recipient Parent & Friend Accountability Sharing**.
 
 ---
 
 <p align="center">
   <a href="https://github.com/Imtiyazkhan6685/NeuroGuard/releases/download/v1.0.0/NeuroGuard.apk">
-    <img src="https://img.shields.io/badge/📥_Download-NeuroGuard.apk_(v1.0.0)-5E5CE6?style=for-the-badge&logo=android&logoColor=white" alt="Download NeuroGuard APK" height="48" />
+    <img src="https://img.shields.io/badge/📥_Download-NeuroGuard.apk_(v1.0.0)-30D158?style=for-the-badge&logo=android&logoColor=white" alt="Download NeuroGuard APK" height="52" />
   </a>
 </p>
 
@@ -24,74 +24,78 @@
 > 
 > **NeuroGuard operates 100% offline and standalone on your Android device.**
 > 
-> - **Floating Hover Pill**: Rendered directly by Android's native `WindowManager`. Works completely offline.
-> - **Reels & Shorts Detection**: Monitored locally on your device via Android's native `AccessibilityService`. No data ever leaves your phone.
-> - **Attention Span Analytics**: All millisecond dwell times, boredom rates, and drop-off curves are calculated in local device memory.
-> - **Accountability Alert**: Uses Android's built-in `SmsManager` to send a direct text message from your phone's SIM card over your cellular network. **No internet, Wi-Fi, or cloud server is needed!**
-> - *(Optional Developer Webhook)*: An optional cloud webhook is available for developers who want to connect Discord/Slack/Twilio, but it is 100% optional. The app works fully without it.
+> - **Persistent Draggable Floating HUD**: Rendered directly by Android's native `WindowManager`. Stays parked on the side of your screen even when NeuroGuard or target apps are closed.
+> - **Real Instagram & YouTube Shorts Detection**: Monitored locally on your device via Android's native `AccessibilityService`. Tracks real swipe transitions without touching any screen content or personal data.
+> - **Dual-Limit Evaluation**: Dynamically monitors **Reel Count vs. Active Foreground Minutes** in local memory, triggering when whichever threshold is hit first.
+> - **100% Play Protect Safe**: No invasive background SMS daemon permissions. Accountability sharing uses standard 1-tap SMS intents (`ACTION_SENDTO`), WhatsApp dispatching, or optional local webhooks. No financial fraud warnings or installation blocks.
 
 ---
 
-## 📲 Newcomer Installation Guide (Step-by-Step)
+## 📲 Installation Guide & Android Setup
 
-Installing an APK takes less than **60 seconds**. Follow these steps:
+Installing takes less than **60 seconds**:
 
 ### Step 1: Download the APK
-On your Android phone, tap the button below or copy the link into Google Chrome:
+On your Android phone, download the APK from the link above:  
 👉 **[Download NeuroGuard.apk](https://github.com/Imtiyazkhan6685/NeuroGuard/releases/download/v1.0.0/NeuroGuard.apk)** *(~4.2 MB)*
 
-### Step 2: Allow Installation
-1. Once the file finishes downloading, tap **Open** or find `NeuroGuard.apk` in your phone's **Files / Downloads** app.
-2. If Android displays: *"For your security, your phone is not allowed to install unknown apps from this source"*:
-   - Tap **Settings** on the prompt.
-   - Toggle **Allow from this source** to **ON**.
-   - Tap the back button and tap **Install**.
+### Step 2: Install the APK
+1. Tap the downloaded file in your browser or find `NeuroGuard.apk` in your **Downloads** folder.
+2. If Android warns *"Install unknown apps"*:
+   - Tap **Settings** ➔ Toggle **Allow from this source** to **ON**.
+   - Return and tap **Install**.
+3. **Google Play Protect**: NeuroGuard passes all Play Protect checks cleanly because sensitive background SMS daemon permissions have been eliminated.
 
-### Step 3: Grant the 3 Core Permissions
-When you open NeuroGuard for the first time, enable the three permissions:
+### Step 3: Enable the 2 System Services
 
-| Permission | Why It's Needed | How to Enable |
+| Service | Why It's Needed | How to Enable |
 |---|---|---|
-| **1. Display Over Other Apps** | Allows the floating pill counter to hover over Instagram and YouTube. | Tap **Enable Overlay** ➔ Find **NeuroGuard** in the list ➔ Toggle **Allow display over other apps**. |
-| **2. Accessibility Service** | Detects when you open Reels/Shorts and counts each swipe. | Tap **Enable Accessibility** ➔ Tap **Installed Apps / Downloaded Services** ➔ Select **NeuroGuard** ➔ Toggle **ON**. |
-| **3. SMS Permission** | Automatically sends the text message to your partner when limit is exceeded. | Tap **Allow** when the system prompt asks for SMS access. |
+| **1. Display Over Other Apps** | Allows the floating pill counter to dock on your screen over Instagram and YouTube. | Tap **Enable Overlay** ➔ Select **NeuroGuard** ➔ Toggle **Allow display over other apps**. |
+| **2. Accessibility Service** | Intercepts swipe gestures on Instagram (`com.instagram.android`) and YouTube (`com.google.android.youtube`). | Tap **Enable Accessibility** ➔ Tap **Downloaded apps** ➔ Select **NeuroGuard** ➔ Toggle **ON**. |
 
-### Step 4: Set Your Accountability Partner
-1. Go to the **Accountability** tab in the app.
-2. Enter the **Name** and **Phone Number** of the person you want to keep you accountable (e.g., Mom, Dad, Best Friend, Coach).
-3. Set your **Daily Reel Quota** (e.g., 20 Reels).
-4. Tap **Send Test Alert** to verify that the SMS sends properly!
-
-### Step 5: Test the Magic! ✨
-- Open the **Instagram** app and scroll to **Reels**, or open **YouTube Shorts**.
-- A small glassmorphic pill will immediately appear floating on your screen:
-  - **Reel Count**: Shows your current count vs daily limit (`1 / 20 Reels`).
-  - **Live Stopwatch**: Ticks up while you watch (`00:07s`).
-  - **Attention State**: Detects if you are `⚡ Impulsive`, `🥱 Boredom Skimming`, or `🧠 Deep Focus`.
-- When you reach your limit, NeuroGuard automatically dispatches an alert SMS to your partner!
+> [!NOTE]
+> **Android 13 / 14 / 15 "Restricted Setting" Fix**:  
+> If Android greys out the Accessibility toggle saying *"Restricted setting for your security"*:  
+> 1. Go to your phone **Settings ➔ Apps ➔ NeuroGuard** (or long-press the NeuroGuard app icon and tap **App Info** `ⓘ`).  
+> 2. Tap the **three vertical dots (⋮)** in the top-right corner.  
+> 3. Tap **"Allow restricted settings"** and confirm with your fingerprint/PIN.  
+> 4. Go back to Accessibility and turn **NeuroGuard ON**.
 
 ---
 
-## 🌟 Key Capabilities
+## 🌟 Core Features
 
-### 1. Floating Hover HUD (`SYSTEM_ALERT_WINDOW`)
-- Automatically appears over Instagram Reels and YouTube Shorts.
-- Draggable to any position on your screen with fluid spring physics.
-- Collapsible into a compact status dot.
+### 1. Dual-Limit State Machine & Dynamic HUD
+NeuroGuard evaluates two thresholds simultaneously, whichever is reached first:
+- **Daily Reels Quota** (e.g. 20 Reels)
+- **Daily Active Minutes** (e.g. 30 Minutes)
 
-### 2. Automated Accountability SMS
-- When you exceed your daily quota, an automated SMS is dispatched to your partner:
-  > *"🚨 NeuroGuard Alert: Your partner Alex just exceeded their daily limit of 20 Reels (20 watched today). Their average attention span dropped to 6.2s with 74% skipped out of boredom. Please call them to keep them on track!"*
+The floating pill stays visible in the corner and shifts color in real time:
+- 🟢 **Safe (0% – 74%)**: Green pill displaying live count & stopwatch (e.g. `8/20 Reels • 6m`).
+- 🟡 **Warning (75% – 99%)**: Amber pill alerting you that you are approaching your limit.
+- 🔴 **Quota Exceeded (100%+)**: Pulsing red alert triggering accountability notifications.
 
-### 3. Attention Span Decay & Boredom Curve
-- **Why 60s Reels get skipped**: Tracks the second-by-second drop-off curve showing how user boredom spikes between seconds 4–8.
-- **Boredom Rate**: Percentage of videos abandoned within the first 10 seconds.
-- **Compulsive Micro-Skips**: Swipes under 3 seconds revealing slot-machine habit loops.
-- **Hourly Doomscroll Heatmap**: Highlights peak late-night binge hours.
+### 2. Multi-Recipient Accountability Sharing
+- Add multiple contacts (e.g. **Mom**, **Dad**, **Best Friend**, **Partner**).
+- Enable or disable recipients individually with simple checkboxes.
+- Quick 1-tap presets: **All Selected**, **Friends Only**, or **Parents Only**.
+- Direct SMS and WhatsApp integration dispatches your attention score and dwell stats instantly.
 
-### 4. Apple iOS-Grade Design
-- Frosted glassmorphism with dark titanium aesthetic.
-- Cupertino segmented controls and tactile haptic feedback.
+### 3. Apple Fitness-Grade OLED Design
+- Pitch-black OLED background (`#000000`) with zero visual clutter.
+- Concentric triple activity rings:
+  - 🔴 **Coral-Red Ring (`#FA114F`)**: Reels Quota Consumption
+  - 🟢 **Volt-Lime Ring (`#A8FF00`)**: Focus & Skim Ratio
+  - 🔵 **Electric-Cyan Ring (`#00F0FF`)**: Daily Active Minutes
+- Individual live status cards for **Instagram** and **YouTube Shorts**.
+
+---
+
+## 🔒 Privacy & Safety Guarantee
+
+- **No screen recording or DOM inspection**: Only swipe transition events are filtered by app package name.
+- **100% on-device processing**: No personal data or browsing history is ever collected, uploaded, or transmitted.
+- **No invasive permissions**: No financial, banking, contacts, or background SMS access.
 
 ---
 
