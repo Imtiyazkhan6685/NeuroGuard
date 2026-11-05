@@ -43,6 +43,13 @@ jobs:
           cd web-ui
           npm install --legacy-peer-deps
 
+      - name: Ensure Standard Android JKS Keystore
+        run: |
+          cd web-ui/android/app
+          if [ ! -f neuroguard.keystore ]; then
+            keytool -genkeypair -v -keystore neuroguard.keystore -storetype JKS -alias neuroguard -keyalg RSA -keysize 2048 -validity 10000 -storepass neuroguard123 -keypass neuroguard123 -dname "CN=NeuroGuard,O=ScrollZero,C=US"
+          fi
+
       - name: Grant Execute Permission to Gradlew
         run: chmod +x web-ui/android/gradlew
 
@@ -59,23 +66,23 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NeuroGuard-APK-v1.0.1
+          name: NeuroGuard-APK-v1.0.2
           path: NeuroGuard.apk
           retention-days: 14
 
-      - name: Create or Update GitHub Release v1.0.1
+      - name: Create or Update GitHub Release v1.0.2
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.1
-          name: NeuroGuard v1.0.1 (Android APK)
+          tag_name: v1.0.2
+          name: NeuroGuard v1.0.2 (Android APK)
           make_latest: true
           body: |
-            ## 📱 NeuroGuard v1.0.1 Android Release
+            ## 📱 NeuroGuard v1.0.2 Android Release
             
             ### Fixes & Enhancements:
-            - **Fixed "Package appears to be invalid"**: Re-aligned runtime targets to universal `targetSdkVersion 34` (Android 14) with `minSdkVersion 24`, and embedded a permanent deterministic keystore so updates install cleanly over previous installs.
-            - **Updated Version**: Incremented to `versionCode 2`, `versionName 1.0.1`.
+            - **Fixed "Package appears to be invalid"**: Replaced unreleased Android 16 preview codenames (`compileSdkVersionCodename="16"`) with standard finalized Android 15 / Android 14 target APIs (`compileSdkVersion 35 (REL)`, `targetSdkVersion 34`). This allows all Android phones to parse and install the package cleanly.
+            - **Updated Version**: Incremented to `versionCode 3`, `versionName 1.0.2`.
             - **Floating Corner Widget**: Real Instagram & YouTube Shorts tracking with edge-snapping and tap-to-dashboard.
             - **100% Play Protect Safe**: Zero sensitive SMS daemon permissions.
             - **Apple Fitness Interface**: Concentric Neon Tri-Rings & 7-Day Consistency Strip.
@@ -83,12 +90,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Also Update Legacy v1.0.0 Asset
+      - name: Update Previous Release Links
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.0
-          name: NeuroGuard v1.0.0 (Android APK)
+          tag_name: v1.0.1
+          name: NeuroGuard v1.0.1 (Android APK)
           files: NeuroGuard.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
