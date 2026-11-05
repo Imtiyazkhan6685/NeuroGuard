@@ -31,6 +31,19 @@ public class ScrollGuardPlugin extends Plugin {
     private boolean isAccessibilityServiceEnabled() {
         try {
             Context context = getContext();
+            android.view.accessibility.AccessibilityManager am =
+                (android.view.accessibility.AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
+            if (am != null) {
+                java.util.List<android.accessibilityservice.AccessibilityServiceInfo> runningServices =
+                    am.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
+                if (runningServices != null) {
+                    for (android.accessibilityservice.AccessibilityServiceInfo service : runningServices) {
+                        if (service.getId() != null && service.getId().contains(context.getPackageName())) {
+                            return true;
+                        }
+                    }
+                }
+            }
             String enabledServices = Settings.Secure.getString(
                 context.getContentResolver(),
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
@@ -94,17 +107,51 @@ public class ScrollGuardPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void openAppDetailsSettings(PluginCall call) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Failed to open app details: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
     public void toggleFloatingHud(PluginCall call) {
         Boolean show = call.getBoolean("show");
         boolean shouldShow = (show != null) ? show : true;
+
+        if (shouldShow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
+            // Overlay permission missing - launch settings for user to enable in 1 tap
+            Intent intent = new Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:" + getContext().getPackageName())
+            );
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            JSObject res = new JSObject();
+            res.put("needsPermission", true);
+            call.resolve(res);
+            return;
+        }
+
         Intent intent = new Intent(getContext(), FloatingHudService.class);
         intent.setAction(shouldShow ? FloatingHudService.ACTION_SHOW : FloatingHudService.ACTION_HIDE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            getContext().startForegroundService(intent);
-        } else {
-            getContext().startService(intent);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getContext().startForegroundService(intent);
+            } else {
+                getContext().startService(intent);
+            }
+        } catch (Exception e) {
+            Log.e("ScrollGuardPlugin", "Failed to toggle HUD service: " + e.getMessage());
         }
-        call.resolve();
+        JSObject res = new JSObject();
+        res.put("needsPermission", false);
+        call.resolve(res);
     }
 
     @PluginMethod

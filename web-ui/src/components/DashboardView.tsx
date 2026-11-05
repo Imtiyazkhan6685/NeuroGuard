@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { toggleAndroidFloatingHud } from '../lib/nativeBridge';
+import {
+  toggleAndroidFloatingHud,
+  requestAndroidOverlayPermission,
+  requestAndroidAccessibility,
+  openAndroidAppDetails,
+  recordNativeSwipe
+} from '../lib/nativeBridge';
 import {
   Flame,
   Zap,
@@ -14,7 +20,11 @@ import {
   Crown,
   Eye,
   Check,
-  Sparkles
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
+  Sparkles,
+  Play
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -38,6 +48,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     selectedPartners,
     settings,
     nativeStats,
+    syncNativeStats,
     isPro
   } = useApp();
 
@@ -62,6 +73,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const mindfulReels = events.filter((e) => !e.wasSkippedEarly).length;
   const focusPct = events.length > 0 ? Math.round((mindfulReels / events.length) * 100) : 68;
 
+  // System permissions state from native Android
+  const hasOverlay = nativeStats?.hasOverlayPermission ?? false;
+  const hasAccessibility = nativeStats?.hasAccessibilityPermission ?? false;
+  const isFullyArmed = hasOverlay && hasAccessibility;
+
   // Apple Fitness Tri-Ring geometry
   const rOuter = 74;   // Coral Red (Reels Quota)
   const rMiddle = 58;  // Volt Lime (Focus Attention)
@@ -79,6 +95,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const next = !isWidgetActive;
     setIsWidgetActive(next);
     await toggleAndroidFloatingHud(next);
+  };
+
+  const handleManualTestSwipe = async (platform: 'Instagram Reels' | 'YouTube Shorts') => {
+    await recordNativeSwipe(platform);
+    await syncNativeStats();
   };
 
   const todayStr = new Date().toLocaleDateString('en-US', {
@@ -113,6 +134,123 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </span>
         </div>
       </div>
+
+      {/* Arm Real Reel Tracking & System Permissions Banner */}
+      {!isFullyArmed ? (
+        <div className="rounded-[28px] bg-gradient-to-b from-[#251307] to-[#120902] border border-amber-500/40 p-5 space-y-4 shadow-2xl relative overflow-hidden animate-fade-in">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                <ShieldAlert className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <div className="text-sm font-black text-white flex items-center space-x-1.5">
+                  <span>Arm Active Tracking (2 Steps)</span>
+                </div>
+                <p className="text-xs text-amber-200/80 mt-0.5">
+                  Enable these 2 permissions to detect Instagram Reels & Shorts
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            {/* Step 1: Overlay Permission */}
+            <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-between">
+              <div className="space-y-0.5 max-w-[68%]">
+                <div className="text-xs font-bold text-white flex items-center space-x-1.5">
+                  <span>1. Display Over Other Apps</span>
+                  {hasOverlay ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#30D158]" />
+                  ) : (
+                    <span className="text-[10px] text-amber-400 font-semibold">• Required</span>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-400">Renders the corner live counter pill over videos</p>
+              </div>
+              <button
+                onClick={async () => {
+                  await requestAndroidOverlayPermission();
+                  await syncNativeStats();
+                }}
+                disabled={hasOverlay}
+                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all ${
+                  hasOverlay
+                    ? 'bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30 cursor-default'
+                    : 'bg-white hover:bg-zinc-200 text-black shadow-lg active:scale-95'
+                }`}
+              >
+                {hasOverlay ? 'Active ✓' : 'Enable'}
+              </button>
+            </div>
+
+            {/* Step 2: Accessibility Service */}
+            <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-between">
+              <div className="space-y-0.5 max-w-[68%]">
+                <div className="text-xs font-bold text-white flex items-center space-x-1.5">
+                  <span>2. Reel Accessibility Service</span>
+                  {hasAccessibility ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#30D158]" />
+                  ) : (
+                    <span className="text-[10px] text-amber-400 font-semibold">• Required</span>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-400">Detects real-life Instagram Reels & YouTube Shorts swipes</p>
+              </div>
+              <button
+                onClick={async () => {
+                  await requestAndroidAccessibility();
+                  await syncNativeStats();
+                }}
+                disabled={hasAccessibility}
+                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all ${
+                  hasAccessibility
+                    ? 'bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30 cursor-default'
+                    : 'bg-[#A8FF00] hover:bg-[#8ee600] text-black shadow-lg active:scale-95'
+                }`}
+              >
+                {hasAccessibility ? 'Active ✓' : 'Enable'}
+              </button>
+            </div>
+
+            {/* Android 13/14/15 Restricted Setting Notice */}
+            {!hasAccessibility && (
+              <div className="p-3.5 rounded-2xl bg-black/40 border border-amber-500/20 space-y-2 text-[11px] text-zinc-300">
+                <div className="flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="leading-snug">
+                    <b className="text-white">Android 13/14/15 Tip:</b> If Accessibility says <i>"Restricted setting"</i>:
+                  </div>
+                </div>
+                <div className="pl-6 space-y-1 text-zinc-400 text-[11px]">
+                  <div>1. Tap the button below to open <b>NeuroGuard App Info</b>.</div>
+                  <div>2. Tap the <b>three dots (⋮)</b> in the top-right corner.</div>
+                  <div>3. Tap <b>"Allow restricted settings"</b> (verify PIN/fingerprint).</div>
+                  <div>4. Return here & tap <b>"Enable"</b> on Step 2!</div>
+                </div>
+                <div className="pt-1">
+                  <button
+                    onClick={() => openAndroidAppDetails()}
+                    className="w-full py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors border border-white/10"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Open App Info (Allow Restricted Settings)</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-[#0d1d12] border border-[#30D158]/30 px-4 py-2.5 flex items-center justify-between text-xs text-[#30D158]">
+          <div className="flex items-center space-x-2">
+            <ShieldCheck className="w-4 h-4 text-[#30D158]" />
+            <span className="font-bold text-white">Protection Active:</span>
+            <span className="text-zinc-300">Real Instagram & YouTube tracking armed</span>
+          </div>
+          <span className="w-2 h-2 rounded-full bg-[#30D158] animate-ping" />
+        </div>
+      )}
 
       {/* 7-Day Apple Fitness Weekly Consistency Strip */}
       <div className="rounded-[28px] bg-[#121214] border border-white/[0.08] p-4 flex items-center justify-between">
@@ -257,12 +395,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Real Apps Detection Cards: Instagram & YouTube */}
       <div className="space-y-2">
-        <span className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase px-1">
-          Hardware Background Detection
-        </span>
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase">
+            Hardware Background Detection
+          </span>
+          <span className="text-[10px] text-zinc-500 font-medium">Live from Accessibility Engine</span>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           {/* Card 1: Real Instagram Reels */}
-          <div className="rounded-[24px] bg-[#121214] border border-white/[0.08] p-4.5 space-y-2">
+          <div className="rounded-[24px] bg-[#121214] border border-white/[0.08] p-4.5 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-400">Instagram</span>
               <span className="w-2 h-2 rounded-full bg-[#FA114F] animate-pulse" />
@@ -271,10 +412,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {instagramCount}
             </div>
             <p className="text-[11px] text-zinc-500">Reels swiped in Instagram</p>
+            <button
+              onClick={() => handleManualTestSwipe('Instagram Reels')}
+              className="w-full py-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-800 text-[10px] font-bold text-zinc-300 hover:text-white transition-colors border border-white/5 flex items-center justify-center space-x-1"
+            >
+              <Play className="w-2.5 h-2.5 text-[#FA114F]" />
+              <span>Test +1 IG Reel</span>
+            </button>
           </div>
 
           {/* Card 2: Real YouTube Shorts */}
-          <div className="rounded-[24px] bg-[#121214] border border-white/[0.08] p-4.5 space-y-2">
+          <div className="rounded-[24px] bg-[#121214] border border-white/[0.08] p-4.5 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-400">YouTube</span>
               <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse" />
@@ -283,6 +431,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {youtubeCount}
             </div>
             <p className="text-[11px] text-zinc-500">Shorts swiped in YouTube</p>
+            <button
+              onClick={() => handleManualTestSwipe('YouTube Shorts')}
+              className="w-full py-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-800 text-[10px] font-bold text-zinc-300 hover:text-white transition-colors border border-white/5 flex items-center justify-center space-x-1"
+            >
+              <Play className="w-2.5 h-2.5 text-[#00F0FF]" />
+              <span>Test +1 Short</span>
+            </button>
           </div>
         </div>
       </div>

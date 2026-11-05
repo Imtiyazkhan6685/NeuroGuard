@@ -5,7 +5,8 @@ interface ScrollGuardPluginInterface {
   getNativeStats(): Promise<NativeStats>;
   requestOverlayPermission(): Promise<void>;
   requestAccessibilityPermission(): Promise<void>;
-  toggleFloatingHud(options: { show: boolean }): Promise<void>;
+  openAppDetailsSettings(): Promise<void>;
+  toggleFloatingHud(options: { show: boolean }): Promise<{ needsPermission?: boolean }>;
   savePartners(options: { partnersJson: string }): Promise<void>;
   getPartners(): Promise<{ partnersJson: string }>;
   triggerTestAlert(): Promise<void>;
@@ -55,6 +56,19 @@ export const requestAndroidAccessibility = async () => {
       return true;
     } catch (e) {
       console.error('Failed to request accessibility:', e);
+      return false;
+    }
+  }
+  return false;
+};
+
+export const openAndroidAppDetails = async () => {
+  if (isNativeAndroid()) {
+    try {
+      await NativeScrollGuard.openAppDetailsSettings();
+      return true;
+    } catch (e) {
+      console.error('Failed to open app details:', e);
       return false;
     }
   }

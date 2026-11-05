@@ -66,26 +66,25 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NeuroGuard-APK-v1.0.2
+          name: NeuroGuard-APK-v1.0.3
           path: NeuroGuard.apk
           retention-days: 14
 
-      - name: Create or Update GitHub Release v1.0.2
+      - name: Create or Update GitHub Release v1.0.3
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.2
-          name: NeuroGuard v1.0.2 (Android APK)
+          tag_name: v1.0.3
+          name: NeuroGuard v1.0.3 (Android APK)
           make_latest: true
           body: |
-            ## 📱 NeuroGuard v1.0.2 Android Release
+            ## 📱 NeuroGuard v1.0.3 Android Release
             
             ### Fixes & Enhancements:
-            - **Fixed "Package appears to be invalid"**: Replaced unreleased Android 16 preview codenames (`compileSdkVersionCodename="16"`) with standard finalized Android 15 / Android 14 target APIs (`compileSdkVersion 35 (REL)`, `targetSdkVersion 34`). This allows all Android phones to parse and install the package cleanly.
-            - **Updated Version**: Incremented to `versionCode 3`, `versionName 1.0.2`.
-            - **Floating Corner Widget**: Real Instagram & YouTube Shorts tracking with edge-snapping and tap-to-dashboard.
-            - **100% Play Protect Safe**: Zero sensitive SMS daemon permissions.
-            - **Apple Fitness Interface**: Concentric Neon Tri-Rings & 7-Day Consistency Strip.
+            - **Multi-Signal Real Reel Detection Engine**: Upgraded `ReelAccessibilityService` to listen for vertical page flips (`typeViewSelected`), scroll gestures, and live metadata content signature changes (`typeWindowContentChanged`) across Instagram Reels (`clips_viewer`) and YouTube Shorts (`shorts_player`).
+            - **Setup & Arming Dashboard Card**: Prominent on-screen setup guide with 1-tap buttons for "Display Over Other Apps" and "Reel Accessibility Service", including a 1-tap shortcut to App Info for the Android 13/14/15 "Restricted setting" security toggle.
+            - **Immediate Feedback & Testing**: Added on-dashboard test triggers to verify HUD rendering and Tri-Ring animations on real hardware.
+            - **100% Sideload Installable & Play Protect Safe**: Deterministic keystore signing with both v1 and v2 signature schemes.
           files: NeuroGuard.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -94,8 +93,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.1
-          name: NeuroGuard v1.0.1 (Android APK)
+          tag_name: v1.0.2
+          name: NeuroGuard v1.0.2 (Android APK)
           files: NeuroGuard.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
